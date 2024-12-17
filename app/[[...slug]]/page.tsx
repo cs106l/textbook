@@ -4,9 +4,7 @@ export async function generateStaticParams() {
   return [{ params: { slug: undefined } }];
 }
 
-export default async function Page({
-  params,
-}: {
+export default async function Page({}: {
   params: Promise<{ slug?: string[] }>;
 }) {
   return (
