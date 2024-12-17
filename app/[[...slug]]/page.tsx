@@ -1,7 +1,7 @@
 import ModeSwitcher from "./ModeSwitcher";
 
 export async function generateStaticParams() {
-  return [{ params: { slug: undefined } }];
+  return [{ slug: undefined }];
 }
 
 export default async function Page({}: {
