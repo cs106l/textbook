@@ -3,15 +3,19 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import theme from "./theme";
 
+import "katex/dist/katex.min.css";
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html suppressHydrationWarning>
       <head />
-      <body style={{ backgroundColor: "var(--palette-common-background)" }}>
+      <body>
         <InitColorSchemeScript attribute="class" />
         <AppRouterCacheProvider>
-          <CssBaseline />
-          <ThemeProvider theme={theme}>{children}</ThemeProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline enableColorScheme />
+            {children}
+          </ThemeProvider>
         </AppRouterCacheProvider>
       </body>
     </html>

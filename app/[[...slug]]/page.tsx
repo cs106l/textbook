@@ -7,9 +7,11 @@ export async function generateStaticParams() {
 export default async function Page({}: {
   params: Promise<{ slug?: string[] }>;
 }) {
+  const { default: Page } = await import("@/src/index.md");
   return (
-    <h1>
+    <div>
       <ModeSwitcher />
-    </h1>
+      <Page />
+    </div>
   );
 }
