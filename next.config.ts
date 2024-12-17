@@ -7,6 +7,10 @@ import rehypeKatex from "rehype-katex";
 const nextConfig: NextConfig = {
   output: "export",
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
+  basePath: process.env.NODE_ENV === "production" ? "/textbook" : undefined,
+  images: {
+    unoptimized: true,
+  },
 };
 
 /**
