@@ -1,6 +1,7 @@
 import { Typography, TypographyProps } from "@mui/material";
 import type { MDXComponents } from "mdx/types";
 import React from "react";
+import CodeBlock from "./components/CodeBlock";
 
 function typography(props?: TypographyProps) {
   return ({ children }: { children: React.ReactNode }) => (
@@ -22,5 +23,6 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     h5: heading({ variant: "h5" }),
     h6: heading({ variant: "h6" }),
     p: typography({ variant: "body1", marginBottom: "1rem" }),
+    pre: CodeBlock,
   };
 }

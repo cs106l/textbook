@@ -1,3 +1,4 @@
+import { Button, Container } from "@mui/material";
 import ModeSwitcher from "./ModeSwitcher";
 
 export async function generateStaticParams() {
@@ -11,7 +12,9 @@ export default async function Page({}: {
   return (
     <div>
       <ModeSwitcher />
-      <Page />
+      <Container maxWidth="md">
+        <Page />
+      </Container>
     </div>
   );
 }
