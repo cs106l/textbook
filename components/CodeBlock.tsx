@@ -35,11 +35,30 @@ export default function CodeBlock({ children }: CodeBlockProps) {
   const highlighter = React.useCallback(
     (code: string) => {
       if (!options.language) return code;
-      const highlight = hljs.highlight(code, { language: options.language });
-      const html = `${highlight.value}<br/>`;
-      return <div dangerouslySetInnerHTML={{ __html: html }} />;
+      if (!anchor.hasAnchor || focused)
+        return highlight(code, options.language);
+
+      const before = anchor.lines.slice(0, anchor.start);
+      const between = anchor.lines.slice(anchor.start, anchor.end);
+      const after = anchor.lines.slice(anchor.end);
+
+      // Handle missing newlines
+      if (between.length) before.push("");
+      if (after.length) between.push("");
+
+      return (
+        <>
+          {highlight(before.join("\n"), options.language, {
+            className: "anchor-dim",
+          })}
+          {highlight(between.join("\n"), options.language)}
+          {highlight(after.join("\n"), options.language, {
+            className: "anchor-dim",
+          })}
+        </>
+      );
     },
-    [options]
+    [options, anchor, focused]
   );
 
   const [copied, setCopied] = React.useState(false);
@@ -73,12 +92,14 @@ export default function CodeBlock({ children }: CodeBlockProps) {
         "&:hover .actions": {
           opacity: 1,
         },
+
+        "& .anchor-dim": {
+          opacity: 0.5,
+        },
       }}
     >
       {/* This box actually contains the editor.
-          It allows scrolling when the code block contents exceed width.
-          Note: scrolling must be disabled when editable, otherwise
-          textarea will be messed up. */}
+          It allows scrolling when the code block contents exceed width. */}
       <Box
         sx={{
           paddingY: 1,
@@ -142,6 +163,7 @@ function ChipButton(props: ButtonProps) {
         textTransform: "unset",
         color: "var(--palette-grey-600)",
         borderColor: "var(--palette-grey-300)",
+        backgroundColor: "var(--palette-background-code)",
         ...theme.applyStyles("dark", {
           color: "var(--palette-grey-400)",
           borderColor: "var(--palette-grey-700)",
@@ -149,6 +171,17 @@ function ChipButton(props: ButtonProps) {
       })}
       {...props}
     />
+  );
+}
+
+function highlight(
+  code: string,
+  language: string,
+  props: React.HTMLAttributes<HTMLDivElement> | undefined = undefined
+): React.ReactNode {
+  const highlight = hljs.highlight(code, { language });
+  return (
+    <div dangerouslySetInnerHTML={{ __html: highlight.value }} {...props} />
   );
 }
 
@@ -170,6 +203,51 @@ type AnchoredCode = {
 
 type Anchor = AnchorlessCode | AnchoredCode;
 
+function preserveAnchor(anchor: AnchoredCode, lines: string[]): AnchoredCode {
+  const changes = diffArrays(anchor.lines, lines);
+
+  let originalPos = 0; // Position in the original text
+  let modifiedPos = 0; // Position in the modified text
+  let newStart = anchor.start;
+  let newEnd = anchor.end;
+
+  for (const change of changes) {
+    const length = change.value.length;
+
+    if (change.added) {
+      // Adjust indices if additions occur before or within the range
+      if (modifiedPos <= newStart) {
+        newStart += length;
+        newEnd += length;
+      } else if (modifiedPos <= newEnd) {
+        newEnd += length;
+      }
+      modifiedPos += length;
+    } else if (change.removed) {
+      // Adjust indices if removals overlap the range
+      if (originalPos < anchor.start && originalPos + length > anchor.start) {
+        newStart = originalPos;
+      }
+      if (originalPos < anchor.end && originalPos + length > anchor.end) {
+        newEnd = originalPos;
+      }
+      originalPos += length;
+    } else {
+      // Unchanged text: Move both pointers and adjust indices
+      if (originalPos <= anchor.start && originalPos + length > anchor.start) {
+        newStart = modifiedPos + (anchor.start - originalPos);
+      }
+      if (originalPos <= anchor.end && originalPos + length > anchor.end) {
+        newEnd = modifiedPos + (anchor.end - originalPos);
+      }
+      originalPos += length;
+      modifiedPos += length;
+    }
+  }
+
+  return { hasAnchor: true, lines, start: newStart, end: newEnd };
+}
+
 function useAnchor(initialCode: string): {
   anchor: Anchor;
   onChange: (newCode: string, isFocused: boolean) => void;
@@ -185,8 +263,29 @@ function useAnchor(initialCode: string): {
   //    - onChange: update code, do diff
 
   const initialAnchor = React.useMemo<Anchor>(() => {
+    const lines = initialCode.split("\n");
+    const start = lines.indexOf("!!!");
+    const end = lines.lastIndexOf("!!!");
+
     // TODO: determine anchors from initial code
-    return { hasAnchor: false, code: initialCode };
+    if (start === -1 && end === -1) {
+      return { hasAnchor: false, code: initialCode };
+    }
+
+    if (start === end) {
+      return { hasAnchor: false, code: initialCode };
+    }
+
+    const before = lines.slice(0, start);
+    const between = lines.slice(start + 1, end);
+    const after = lines.slice(end + 1);
+
+    return {
+      hasAnchor: true,
+      lines: [...before, ...between, ...after],
+      start: before.length,
+      end: before.length + between.length,
+    };
   }, [initialCode]);
 
   const [anchor, setAnchor] = React.useState<Anchor>(initialAnchor);
@@ -197,9 +296,10 @@ function useAnchor(initialCode: string): {
       }
 
       const lines = code.split("\n");
+
       if (isFocused) {
-        const before = lines.slice(0, anchor.start);
-        const after = lines.slice(anchor.end);
+        const before = anchor.lines.slice(0, anchor.start);
+        const after = anchor.lines.slice(anchor.end);
         return setAnchor({
           hasAnchor: true,
           lines: [...before, ...lines, ...after],
@@ -208,10 +308,7 @@ function useAnchor(initialCode: string): {
         });
       }
 
-      // eslint-disable-next-line
-      const changes = diffArrays(anchor.lines, lines);
-
-      // TODO: diffing logic
+      setAnchor(preserveAnchor(anchor, lines));
     },
     [anchor]
   );
@@ -257,11 +354,13 @@ function extractContent(node: React.ReactNode): PreContent {
     className?: string;
   };
 
-  if (typeof props.children !== "string") throw invalid;
-  if (props.children.endsWith("\n"))
-    props.children = props.children.slice(0, -1);
+  let children = props.children;
+  const className = props.className;
+
+  if (typeof children !== "string") throw invalid;
+  if (children.endsWith("\n")) children = children.slice(0, -1);
   return {
-    options: getOptions(props.className),
-    initialContent: props.children,
+    options: getOptions(className),
+    initialContent: children,
   };
 }
