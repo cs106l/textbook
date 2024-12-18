@@ -1,20 +1,36 @@
 "use client";
 
 import { Box, Button, ButtonProps, Stack } from "@mui/material";
-import React from "react";
+import React, { useMemo } from "react";
 import Editor from "react-simple-code-editor";
 
 import "highlight.js/styles/github.css";
 import hljs from "highlight.js";
 import { monospace } from "@/app/theme";
+import { diffArrays } from "diff";
+
+/* ========================================================================= */
+/* CodeBlock                                                                 */
+/* ========================================================================= */
 
 export type CodeBlockProps = {
   children: React.ReactNode;
 };
 
 export default function CodeBlock({ children }: CodeBlockProps) {
-  const { options, initialCode } = extractCode(children);
-  const [code, setCode] = React.useState(initialCode);
+  const { options, initialContent } = useMemo(
+    () => extractContent(children),
+    [children]
+  );
+
+  const { anchor, onChange } = useAnchor(initialContent);
+  const [focused, setFocused] = React.useState(true);
+
+  const code = useMemo<string>(() => {
+    if (!anchor.hasAnchor) return anchor.code;
+    if (focused) return anchor.lines.slice(anchor.start, anchor.end).join("\n");
+    return anchor.lines.join("\n");
+  }, [anchor, focused]);
 
   const highlighter = React.useCallback(
     (code: string) => {
@@ -75,7 +91,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
       >
         <Editor
           value={code}
-          onValueChange={setCode}
+          onValueChange={(code) => onChange(code, focused)}
           readOnly={!options.runnable}
           highlight={highlighter}
           placeholder="Type some code..."
@@ -101,6 +117,11 @@ export default function CodeBlock({ children }: CodeBlockProps) {
         <ChipButton onClick={copyCode}>
           {copied ? "Copied!" : "Copy"}
         </ChipButton>
+        {anchor.hasAnchor && (
+          <ChipButton onClick={() => setFocused((focused) => !focused)}>
+            {focused ? "Show" : "Hide"}
+          </ChipButton>
+        )}
       </Stack>
     </Box>
   );
@@ -131,17 +152,88 @@ function ChipButton(props: ButtonProps) {
   );
 }
 
-type CodeOptions = {
+/* ========================================================================= */
+/* Anchoring Code                                                            */
+/* ========================================================================= */
+
+type AnchorlessCode = {
+  hasAnchor: false;
+  code: string;
+};
+
+type AnchoredCode = {
+  hasAnchor: true;
+  lines: string[];
+  start: number;
+  end: number;
+};
+
+type Anchor = AnchorlessCode | AnchoredCode;
+
+function useAnchor(initialCode: string): {
+  anchor: Anchor;
+  onChange: (newCode: string, isFocused: boolean) => void;
+} {
+  // 1. Extract anchor (or not) from initial code
+  // 2. If code has no anchor, return anchorless result
+  //     - code: stateful string
+  //     - onChange: update code
+  // 3. If code has anchor, return anchored result
+  //    - lines: split code by line
+  //    - start: line number of start anchor
+  //    - end: line number of end anchor + 1
+  //    - onChange: update code, do diff
+
+  const initialAnchor = React.useMemo<Anchor>(() => {
+    // TODO: determine anchors from initial code
+    return { hasAnchor: false, code: initialCode };
+  }, [initialCode]);
+
+  const [anchor, setAnchor] = React.useState<Anchor>(initialAnchor);
+  const onChange = React.useCallback(
+    (code: string, isFocused: boolean) => {
+      if (!anchor.hasAnchor) {
+        return setAnchor({ hasAnchor: false, code });
+      }
+
+      const lines = code.split("\n");
+      if (isFocused) {
+        const before = lines.slice(0, anchor.start);
+        const after = lines.slice(anchor.end);
+        return setAnchor({
+          hasAnchor: true,
+          lines: [...before, ...lines, ...after],
+          start: anchor.start,
+          end: anchor.start + lines.length,
+        });
+      }
+
+      // eslint-disable-next-line
+      const changes = diffArrays(anchor.lines, lines);
+
+      // TODO: diffing logic
+    },
+    [anchor]
+  );
+
+  return { anchor, onChange };
+}
+
+/* ========================================================================= */
+/* Extracting <pre /> content from markdown                                  */
+/* ========================================================================= */
+
+type PreOptions = {
   language?: string;
   runnable?: boolean;
 };
 
-type Code = {
-  options: CodeOptions;
-  initialCode: string;
+type PreContent = {
+  options: PreOptions;
+  initialContent: string;
 };
 
-function getOptions(rawString?: string): CodeOptions {
+function getOptions(rawString?: string): PreOptions {
   if (!rawString) return {};
 
   const removePrefix = "language-";
@@ -155,17 +247,21 @@ function getOptions(rawString?: string): CodeOptions {
   };
 }
 
-function extractCode(node: React.ReactNode): Code {
+function extractContent(node: React.ReactNode): PreContent {
   const invalid = new Error("Invalid <code /> structure");
 
   if (!React.isValidElement(node) || node.type !== "code") throw invalid;
 
-  let { children, className } = node.props as {
+  const props = node.props as {
     children: string;
     className?: string;
   };
 
-  if (typeof children !== "string") throw invalid;
-  if (children.endsWith("\n")) children = children.slice(0, -1);
-  return { options: getOptions(className), initialCode: children };
+  if (typeof props.children !== "string") throw invalid;
+  if (props.children.endsWith("\n"))
+    props.children = props.children.slice(0, -1);
+  return {
+    options: getOptions(props.className),
+    initialContent: props.children,
+  };
 }

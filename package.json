@@ -17,6 +17,7 @@
     "@mui/material-nextjs": "^6.2.0",
     "@next/mdx": "^15.1.0",
     "@types/mdx": "^2.0.13",
+    "diff": "^7.0.0",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.0",
     "katex": "^0.16.15",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/diff": "^6.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

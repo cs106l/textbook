@@ -1,4 +1,4 @@
-import { Button, Container } from "@mui/material";
+import { Container } from "@mui/material";
 import ModeSwitcher from "./ModeSwitcher";
 
 export async function generateStaticParams() {
