@@ -36,7 +36,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
     (code: string) => {
       if (!options.language) return code;
       if (!anchor.hasAnchor || focused)
-        return highlight(code, options.language);
+        return highlight(code, { language: options.language, br: true });
 
       const before = anchor.lines.slice(0, anchor.start);
       const between = anchor.lines.slice(anchor.start, anchor.end);
@@ -46,15 +46,35 @@ export default function CodeBlock({ children }: CodeBlockProps) {
       if (between.length) before.push("");
       if (after.length) between.push("");
 
+      /* Note: To get parity between react-simple-editor textarea and pre,
+       * we must terminate the last highlight div with a <br /> tag.
+       * Otherwise, inserting a newline at the end of the textarea
+       * won't match up with the pre element
+       */
+
       return (
         <>
-          {highlight(before.join("\n"), options.language, {
-            className: "anchor-dim",
-          })}
-          {highlight(between.join("\n"), options.language)}
-          {highlight(after.join("\n"), options.language, {
-            className: "anchor-dim",
-          })}
+          {before.length > 0 &&
+            highlight(before.join("\n"), {
+              br: between.length === 0 && after.length === 0,
+              language: options.language,
+              div: {
+                className: "anchor-dim",
+              },
+            })}
+          {between.length > 0 &&
+            highlight(between.join("\n"), {
+              br: after.length === 0,
+              language: options.language,
+            })}
+          {after.length > 0 &&
+            highlight(after.join("\n"), {
+              br: true,
+              language: options.language,
+              div: {
+                className: "anchor-dim",
+              },
+            })}
         </>
       );
     },
@@ -115,7 +135,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
           onValueChange={(code) => onChange(code, focused)}
           readOnly={!options.runnable}
           highlight={highlighter}
-          placeholder="Type some code..."
+          placeholder={options.runnable ? "Type some code..." : undefined}
           style={{
             overflow: "visible",
             float: "left",
@@ -176,12 +196,17 @@ function ChipButton(props: ButtonProps) {
 
 function highlight(
   code: string,
-  language: string,
-  props: React.HTMLAttributes<HTMLDivElement> | undefined = undefined
+  options: {
+    language: string;
+    br?: boolean;
+    div?: React.HTMLAttributes<HTMLDivElement>;
+  }
 ): React.ReactNode {
+  const { language, br, div: divProps } = options;
   const highlight = hljs.highlight(code, { language });
+  if (br) highlight.value += "<br/>";
   return (
-    <div dangerouslySetInnerHTML={{ __html: highlight.value }} {...props} />
+    <div dangerouslySetInnerHTML={{ __html: highlight.value }} {...divProps} />
   );
 }
 
@@ -203,6 +228,15 @@ type AnchoredCode = {
 
 type Anchor = AnchorlessCode | AnchoredCode;
 
+/**
+ * Computes the new anchor after a change in the code.
+ * Given a previous anchor and the new code, this function determines the new
+ * `start` and `end` indices of the anchored region.
+ *
+ * @param anchor The existing anchor.
+ * @param lines The new code lines.
+ * @returns A new anchored code.
+ */
 function preserveAnchor(anchor: AnchoredCode, lines: string[]): AnchoredCode {
   const changes = diffArrays(anchor.lines, lines);
 
@@ -267,13 +301,20 @@ function useAnchor(initialCode: string): {
     const start = lines.indexOf("!!!");
     const end = lines.lastIndexOf("!!!");
 
-    // TODO: determine anchors from initial code
     if (start === -1 && end === -1) {
       return { hasAnchor: false, code: initialCode };
     }
 
     if (start === end) {
       return { hasAnchor: false, code: initialCode };
+    }
+
+    // Anchor covers entire code block, same as if anchor wasn't there
+    if (start === 0 && end === lines.length - 1) {
+      return {
+        hasAnchor: false,
+        code: lines.slice(1, lines.length - 1).join("\n"),
+      };
     }
 
     const before = lines.slice(0, start);
@@ -350,11 +391,11 @@ function extractContent(node: React.ReactNode): PreContent {
   if (!React.isValidElement(node) || node.type !== "code") throw invalid;
 
   const props = node.props as {
-    children: string;
+    children?: string;
     className?: string;
   };
 
-  let children = props.children;
+  let children = props.children ?? "";
   const className = props.className;
 
   if (typeof children !== "string") throw invalid;

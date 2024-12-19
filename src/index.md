@@ -7,24 +7,21 @@ An h1 header
 
 Paragraphs are separated by a blank line.
 
-```cpp
-this is a really really long readonly code block!!!
-Notice that you can scroll the body, no line wrapping
-!!!
-how will mobile handle it? how will mobile handle it? how will mobile handle it? how will mobile handle it?
-!!!
-```
-
 ```cpp,runnable
-this is a really really long editable code block!!!
-Notice that lines that are too long get wrapped
-
+int main() {
 !!!
-here is an anchored section
+// Do something really cool here
+int x = 4;
+int y = x * x;
+std::cout << y << std::endl;
 !!!
-
-how will mobile handle it? how will mobile handle it? how will mobile handle it? how will mobile handle it?
+return 0;
+}
 ```
+
+```cpp
+```
+
 
 2nd paragraph. *Italic*, **bold**, and `monospace`. Itemized lists
 look like:
