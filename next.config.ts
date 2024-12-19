@@ -3,6 +3,9 @@ import createMDX from "@next/mdx";
 
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import remarkGfm from "remark-gfm";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeSlug from "rehype-slug";
 
 const nextConfig: NextConfig = {
   output: "export",
@@ -11,7 +14,10 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  env: {},
 };
+
+nextConfig.env!.NEXT_PUBLIC_BASE_PATH = nextConfig.basePath;
 
 /**
  * Creates a remark plugin that removes frontmatter from a markdown file.
@@ -51,8 +57,12 @@ function removeFrontmatter() {
 const withMDX = createMDX({
   extension: /\.md|.mdx$/,
   options: {
-    remarkPlugins: [removeFrontmatter, remarkMath],
-    rehypePlugins: [rehypeKatex],
+    remarkPlugins: [removeFrontmatter, remarkGfm, remarkMath],
+    rehypePlugins: [
+      rehypeKatex,
+      rehypeSlug,
+      [rehypeAutolinkHeadings, { behavior: "wrap" }],
+    ],
   },
 });
 

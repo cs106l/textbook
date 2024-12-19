@@ -34,6 +34,7 @@ const theme = createTheme({
         background: {
           code: "#f6f7f6",
         },
+        divider: "#e0e0e0",
       },
     },
     dark: {
@@ -41,6 +42,7 @@ const theme = createTheme({
         background: {
           code: "#1d1f21",
         },
+        divider: "#424242",
       },
     },
   },
@@ -77,7 +79,33 @@ const theme = createTheme({
             outlineColor: "var(--palette-grey-800)",
           }),
         },
+        blockquote: {
+          borderLeft: "3px solid var(--palette-divider)",
+          margin: 0,
+          paddingLeft: "24px",
+          color: "var(--palette-text-secondary)",
+        },
       }),
+    },
+
+    MuiTable: {
+      styleOverrides: {
+        root: {
+          width: "unset",
+        },
+      },
+    },
+    MuiTableRow: {
+      styleOverrides: {
+        root: {
+          border: 0,
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: { border: "1px solid var(--palette-divider)" },
+      },
     },
   },
 });

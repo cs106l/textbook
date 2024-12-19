@@ -1,177 +1,78 @@
----
-title: Introduction
+# Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+##### Heading 5
+###### Heading 6
+
 ---
 
-An h1 header
-============
+## Code Blocks
 
-Paragraphs are separated by a blank line.
+Here is a syntax highlighted code block:
+
+```cpp
+int main() {
+  std::cout << "Hello world!" << std::endl;
+  return 0;
+}
+```
+
+Here is an editable syntax highlighted code block. These will ultimately be runnable segments with a `Run` button attached:
+
+```cpp,runnable
+int main() {
+  std::cout << "Hello world!" << std::endl;
+  return 0;
+}
+```
+
+You can initially focus on a section of the code segment by surrounding it with `!!!` lines:
 
 ```cpp,runnable
 int main() {
 !!!
-// Do something really cool here
-int x = 4;
-int y = x * x;
-std::cout << y << std::endl;
-!!!
+std::cout << "Hello world!" << std::endl;
 return 0;
+!!!
 }
 ```
 
-```cpp
-```
+You can also use `inline code`, although this won't be syntax highlighted.
 
+## Footnotes
 
-2nd paragraph. *Italic*, **bold**, and `monospace`. Itemized lists
-look like:
+This text has a footnote attached[^1].
 
-  * this one
-  * that one
-  * the other one
+[^1]: Here is the content of the footnote. It will always render at the bottom of the page.
 
-Note that --- not considering the asterisk --- the actual text
-content starts at 4-columns in.
+## Tables
 
-> Block quotes are
-> written like so.
+Here is a table. The first column is left aligned, the middle is centered, and the right is right aligned.
+
+size | material     | color
+-----|:------------:|------------:
+9    | leather      | brown
+10   | hemp canvas  | natural
+11   | glass        | transparent
+
+## Blockquotes
+
+You can use blockquotes to interleave information.
+
+> Here is a single-line block quote.  
+
+> Here is a multi-line block quote.  
+> Block quotes can span multiple lines and can contain **markdown**.
 >
-> They can span multiple paragraphs,
-> if you like.
+> ```cpp
+> int main() {
+>   std::cout << "Hello world!" << std::endl;
+>   return 0;
+> }
+> ```
+> 
 
-Use 3 dashes for an em-dash. Use 2 dashes for ranges (ex., "it's all
-in chapters 12--14"). Three dots ... will be converted to an ellipsis.
-Unicode is supported. ☺
-
-
-
-An h2 header
-------------
-
-Here's a numbered list:
-
- 1. first item
- 2. second item
- 3. third item
-
-Note again how the actual text starts at 4 columns in (4 characters
-from the left side). Here's a code sample:
-
-    # Let me re-iterate ...
-    for i in 1 .. 10 { do-something(i) }
-
-As you probably guessed, indented 4 spaces. By the way, instead of
-indenting the block, you can use delimited blocks, if you like:
-
-```
-define foobar() {
-    print "Welcome to flavor country!";
-}
-```
-
-(which makes copying & pasting easier). You can optionally mark the
-delimited block for Pandoc to syntax highlight it:
-
-~~~python runnable="true"
-import time
-# Quick, count to ten!
-for i in range(10):
-    # (but not *too* quick)
-    time.sleep(0.5)
-    print i
-~~~
+Here is some text beneath the blockquote.
 
 
-
-### An h3 header ###
-
-Now a nested list:
-
- 1. First, get these ingredients:
-
-      * carrots
-      * celery
-      * lentils
-
- 2. Boil some water.
-
- 3. Dump everything in the pot and follow
-    this algorithm:
-
-        find wooden spoon
-        uncover pot
-        stir
-        cover pot
-        balance wooden spoon precariously on pot handle
-        wait 10 minutes
-        goto first step (or shut off burner when done)
-
-    Do not bump wooden spoon or it will fall.
-
-Notice again how text always lines up on 4-space indents (including
-that last line which continues item 3 above).
-
-Here's a link to [a website](http://foo.bar), to a [local
-doc](local-doc.html), and to a [section heading in the current
-doc](#an-h2-header). Here's a footnote [^1].
-
-[^1]: Footnote text goes here.
-
-Tables can look like this:
-
-size  material      color
-----  ------------  ------------
-9     leather       brown
-10    hemp canvas   natural
-11    glass         transparent
-
-Table: Shoes, their sizes, and what they're made of
-
-(The above is the caption for the table.) Pandoc also supports
-multi-line tables:
-
---------  -----------------------
-keyword   text
---------  -----------------------
-red       Sunsets, apples, and
-          other red or reddish
-          things.
-
-green     Leaves, grass, frogs
-          and other things it's
-          not easy being.
---------  -----------------------
-
-A horizontal rule follows.
-
-***
-
-Here's a definition list:
-
-apples
-  : Good for making applesauce.
-oranges
-  : Citrus!
-tomatoes
-  : There's no "e" in tomatoe.
-
-Again, text is indented 4 spaces. (Put a blank line between each
-term/definition pair to spread things out more.)
-
-Here's a "line block":
-
-| Line one
-|   Line too
-| Line tree
-
-and images can be specified like so:
-
-![example image](example-image.jpg "An exemplary image")
-
-Inline math equations go in like so: $\omega = d\phi / dt$. Display
-math should get its own line and be put in in double-dollarsigns:
-
-$$I = \int \rho R^{2} dV$$
-
-And note that you can backslash-escape any punctuation characters
-which you wish to be displayed literally, ex.: \`foo\`, \*bar\*, etc.

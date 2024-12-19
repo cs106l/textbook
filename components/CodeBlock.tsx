@@ -4,7 +4,7 @@ import { Box, Button, ButtonProps, Stack } from "@mui/material";
 import React, { useMemo } from "react";
 import Editor from "react-simple-code-editor";
 
-import "highlight.js/styles/github.css";
+import "./highlight.scss";
 import hljs from "highlight.js";
 import { monospace } from "@/app/theme";
 import { diffArrays } from "diff";
@@ -34,7 +34,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
 
   const highlighter = React.useCallback(
     (code: string) => {
-      if (!options.language) return code;
+      if (!options.language) return sanitizeHtml(code);
       if (!anchor.hasAnchor || focused)
         return highlight(code, { language: options.language, br: true });
 
@@ -129,6 +129,12 @@ export default function CodeBlock({ children }: CodeBlockProps) {
           height: 1,
           width: 1,
         }}
+        ref={(el?: HTMLElement) => {
+          // Set tabindex to -1 if code is not runnable
+          if (!el) return;
+          const textarea = el.querySelector("textarea");
+          if (textarea) textarea.tabIndex = options.runnable ? 0 : -1;
+        }}
       >
         <Editor
           value={code}
@@ -208,6 +214,15 @@ function highlight(
   return (
     <div dangerouslySetInnerHTML={{ __html: highlight.value }} {...divProps} />
   );
+}
+
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /* ========================================================================= */
@@ -395,7 +410,7 @@ function extractContent(node: React.ReactNode): PreContent {
     className?: string;
   };
 
-  let children = props.children ?? "";
+  let children = props.children;
   const className = props.className;
 
   if (typeof children !== "string") throw invalid;
