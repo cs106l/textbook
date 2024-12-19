@@ -2,8 +2,10 @@
 
 import { createTheme } from "@mui/material/styles";
 import { TypographyStyleOptions } from "@mui/material/styles/createTypography";
+import NextLink, { LinkProps as NextLinkProps } from "next/link";
 
 import { IBM_Plex_Mono, Inter } from "next/font/google";
+import React from "react";
 
 export const font = Inter({
   subsets: ["latin-ext"],
@@ -26,6 +28,13 @@ declare module "@mui/material/styles" {
     code: string;
   }
 }
+
+const LinkBehaviour = React.forwardRef(function LinkBehaviour(
+  props: NextLinkProps,
+  ref: React.Ref<HTMLAnchorElement>
+) {
+  return <NextLink ref={ref} {...props} />;
+});
 
 const theme = createTheme({
   colorSchemes: {
@@ -86,6 +95,12 @@ const theme = createTheme({
           color: "var(--palette-text-secondary)",
         },
       }),
+    },
+
+    MuiLink: {
+      defaultProps: {
+        component: LinkBehaviour,
+      },
     },
 
     MuiTable: {

@@ -5,6 +5,8 @@
 ##### Heading 5
 ###### Heading 6
 
+Here is a link to [another section](#code-blocks).
+
 ---
 
 ## Code Blocks

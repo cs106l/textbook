@@ -1,5 +1,6 @@
 import {
   Divider,
+  Link,
   Table,
   TableBody,
   TableCell,
@@ -72,14 +73,23 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         <section {...props} />
       ),
 
-    table: (props) => (
-      <Table sx={{ marginBottom: 2 }} size="small" {...props} />
-    ),
+    table: (props) => <Table sx={{ mb: 2 }} size="small" {...props} />,
     thead: TableHead,
     tbody: TableBody,
     tfoot: TableFooter,
     tr: TableRow,
     th: TableCell,
     td: TableCell,
+
+    a: ({ children, ...rest }) => {
+      const fn = rest["data-footnote-ref"];
+      return (
+        <Link {...rest}>
+          {fn && "["}
+          {children}
+          {fn && "]"}
+        </Link>
+      );
+    },
   };
 }
