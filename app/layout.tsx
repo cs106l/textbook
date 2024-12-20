@@ -85,7 +85,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Box flexGrow={1}>
                   <Container maxWidth="md">{children}</Container>
                 </Box>
-                <StickyBlock></StickyBlock>
+                <StickyBlock>
+                  {/* This is a placeholder for an eventual page TOC. */}
+                </StickyBlock>
               </Box>
             </Container>
           </ThemeProvider>

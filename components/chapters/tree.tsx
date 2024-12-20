@@ -5,6 +5,6 @@ import { Typography } from "@mui/material";
 
 export default function ClientChapterTree({ book }: { book: Book }) {
   return book.map((node) => (
-    <Typography key={node.route}>{node.meta.title}</Typography>
+    <Typography key={node.route}>{node.meta.nav_title}</Typography>
   ));
 }

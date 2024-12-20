@@ -1,6 +1,6 @@
 ---
 title: Page
-description: A random page!
+description: A short description of this page
 ---
 
 

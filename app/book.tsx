@@ -16,7 +16,7 @@ export type BookNode = {
   children: BookNode[];
 };
 
-export type NodeMetadata = z.infer<typeof MetadataSchema> & {
+export type NodeMetadata = Omit<z.infer<typeof MetadataSchema>, "nav_title"> & {
   /**
    * Path to the directory or file representing this node.
    * This is relative to the project root.
@@ -27,20 +27,24 @@ export type NodeMetadata = z.infer<typeof MetadataSchema> & {
    * This is relative to the project root.
    */
   contentPath: string;
+
+  /** Title as it appears in the navigation. */
+  nav_title: string;
 };
 
 const MarkdownExtensions = [".md", ".mdx"];
 
 const MetadataSchema = z.object({
-  /** A short, human readable title for the page. */
+  /** Title of the page. Appears at the top of the page content. */
   title: z.string(),
-  /** A short, one sentence description of the page content. */
+  /** A short, one-sentence description of the page content. */
   description: z.string(),
+  /** Title as it appears in the navigation. If not provided, title is used instead. */
+  nav_title: z.string().optional(),
 });
 
 export async function buildBook(): Promise<Book> {
-  const srcPath = path.join(process.cwd(), "src");
-  const node = await buildNode(srcPath);
+  const node = await buildNode("src");
 
   // The returned book applies a transformation on the node tree.
   // It adds an index page to the children array of the root node
@@ -141,6 +145,7 @@ async function buildNode(nodePath: string): Promise<BookNode> {
         "",
         "---",
         "title: My Page Title",
+        "description: A short description of the page",
         "# Other properties",
         "---",
         "",
@@ -150,8 +155,9 @@ async function buildNode(nodePath: string): Promise<BookNode> {
 
   const meta: NodeMetadata = {
     ...result.data,
-    nodePath: path.relative(process.cwd(), nodePath),
-    contentPath: path.relative(process.cwd(), contentPath),
+    nodePath,
+    contentPath,
+    nav_title: result.data.nav_title ?? result.data.title,
   };
 
   const node: BookNode = {
