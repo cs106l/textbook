@@ -15,13 +15,13 @@
     "@mdx-js/react": "^3.1.0",
     "@mui/material": "^6.2.0",
     "@mui/material-nextjs": "^6.2.0",
-    "@next/mdx": "^15.1.0",
     "@types/mdx": "^2.0.13",
     "diff": "^7.0.0",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.0",
     "katex": "^0.16.15",
     "next": "15.1.0",
+    "next-mdx-remote": "^5.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-simple-code-editor": "^0.14.1",
@@ -30,7 +30,8 @@
     "rehype-slug": "^6.0.0",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
-    "sass": "^1.83.0"
+    "sass": "^1.83.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

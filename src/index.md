@@ -1,3 +1,8 @@
+---
+title: Introduction
+description: The introduction to the course reader!
+---
+
 # Heading 1
 ## Heading 2
 ### Heading 3
@@ -76,5 +81,3 @@ You can use blockquotes to interleave information.
 > 
 
 Here is some text beneath the blockquote.
-
-
