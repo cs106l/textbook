@@ -184,7 +184,7 @@ function Page({
 }) {
   return (
     <>
-      <Typography variant="h1" fontSize="2.25rem" mb={1} pt={1}>
+      <Typography variant="h1" mb={1} pt={1}>
         {meta.title}
       </Typography>
       <MDX {...rest} />

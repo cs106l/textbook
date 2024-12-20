@@ -15,20 +15,21 @@ import CppIcon from "./icon.svg";
 import Image from "next/image";
 import Lightswitch from "@/components/lightswitch";
 
-const NavHeight = "4rem";
+const NavOffset = "6rem";
 
 function Header() {
   return (
     <Box
       component="header"
       position="sticky"
-      height={NavHeight}
+      height="4rem"
       top={0}
       zIndex={9999}
       borderBottom="1px solid var(--palette-divider)"
       sx={{
         backgroundColor: "var(--palette-common-background)",
       }}
+      marginBottom={`calc(${NavOffset} - 4rem)`}
     >
       <Container
         maxWidth="xl"
@@ -52,6 +53,20 @@ function Header() {
   );
 }
 
+function StickyBlock({ children }: { children?: React.ReactNode }) {
+  return (
+    <Box
+      width={300}
+      height={`calc(100vh - ${NavOffset})`}
+      display={{ xs: "none", md: "block" }}
+      top={NavOffset}
+      position="sticky"
+    >
+      {children}
+    </Box>
+  );
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html suppressHydrationWarning>
@@ -64,19 +79,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Header />
             <Container maxWidth="xl">
               <Box display="flex" flexDirection="row">
-                <Box
-                  width={300}
-                  height={`calc(100vh - ${NavHeight})`}
-                  display={{ xs: "none", md: "block" }}
-                  top={NavHeight}
-                  position="sticky"
-                  padding={2}
-                >
+                <StickyBlock>
                   <ChapterTree />
-                </Box>
-                <Box flexGrow={1} paddingY={2}>
+                </StickyBlock>
+                <Box flexGrow={1}>
                   <Container maxWidth="md">{children}</Container>
                 </Box>
+                <StickyBlock></StickyBlock>
               </Box>
             </Container>
           </ThemeProvider>
