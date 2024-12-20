@@ -4,10 +4,11 @@ import { createTheme } from "@mui/material/styles";
 import { TypographyStyleOptions } from "@mui/material/styles/createTypography";
 import NextLink, { LinkProps as NextLinkProps } from "next/link";
 
-import { IBM_Plex_Mono, Inter } from "next/font/google";
+import { IBM_Plex_Mono, Roboto } from "next/font/google";
 import React from "react";
 
-export const font = Inter({
+export const font = Roboto({
+  weight: ["300", "400", "500", "700"],
   subsets: ["latin-ext"],
 });
 
@@ -74,6 +75,7 @@ const theme = createTheme({
         body: {
           backgroundColor: "var(--palette-common-background)",
           color: "var(--palette-common-onBackground)",
+          overscrollBehavior: "none",
         },
         code: {
           fontFamily: monospace.style.fontFamily,

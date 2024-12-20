@@ -1,5 +1,3 @@
-import { Container } from "@mui/material";
-import ModeSwitcher from "./ModeSwitcher";
 import { Book, BookNode, buildBook } from "../book";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
@@ -36,12 +34,7 @@ export async function generateStaticParams(): Promise<Params[]> {
 
 export default async function Page({ params }: { params: Promise<Params> }) {
   const page = await getPage(params);
-  return (
-    <div>
-      <ModeSwitcher />
-      <Container maxWidth="md">{page.content}</Container>
-    </div>
-  );
+  return page.content;
 }
 
 async function getPage(params: Promise<Params>): Promise<BookNode> {

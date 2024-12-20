@@ -5,6 +5,8 @@ import matter from "gray-matter";
 import MDX, { MDXProps } from "@/components/mdx";
 import { Typography } from "@mui/material";
 
+import "katex/dist/katex.min.css";
+
 export type Book = BookNode[];
 
 export type BookNode = {
@@ -135,7 +137,7 @@ async function buildNode(nodePath: string): Promise<BookNode> {
       [
         `Couldn't build book. Invalid frontmatter in ${contentPath}.`,
         "",
-        "The beginning of the markdown should be a YAML frontmatter block that looks like this:",
+        "The beginning of each markdown page should be a YAML frontmatter block that looks like this:",
         "",
         "---",
         "title: My Page Title",
