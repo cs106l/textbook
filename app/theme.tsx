@@ -1,6 +1,6 @@
 "use client";
 
-import { createTheme } from "@mui/material/styles";
+import { alpha, createTheme } from "@mui/material/styles";
 import { TypographyStyleOptions } from "@mui/material/styles/createTypography";
 import NextLink, { LinkProps as NextLinkProps } from "next/link";
 
@@ -27,6 +27,7 @@ function heading(fontSize: number): TypographyStyleOptions {
 declare module "@mui/material/styles" {
   interface TypeBackground {
     code: string;
+    header: string;
   }
 }
 
@@ -43,6 +44,7 @@ const theme = createTheme({
       palette: {
         background: {
           code: "#f6f7f6",
+          header: alpha("#ffffff", 0.8),
         },
         divider: "#e0e0e0",
       },
@@ -51,6 +53,7 @@ const theme = createTheme({
       palette: {
         background: {
           code: "#1d1f21",
+          header: alpha("#000000", 0.8),
         },
         divider: "#424242",
       },

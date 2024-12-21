@@ -34,7 +34,6 @@ export default function CodeBlock({ children }: CodeBlockProps) {
 
   const highlighter = React.useCallback(
     (code: string) => {
-      if (!options.language) return sanitizeHtml(code);
       if (!anchor.hasAnchor || focused)
         return highlight(code, { language: options.language, br: true });
 
@@ -84,7 +83,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
   const [copied, setCopied] = React.useState(false);
   const copyTimeout = React.useRef<NodeJS.Timeout | undefined>(undefined);
   const copyCode = React.useCallback(() => {
-    navigator.clipboard.writeText(code);
+    navigator.clipboard.writeText(code.replace("`[]`", ""));
     setCopied(true);
     clearTimeout(copyTimeout.current);
     copyTimeout.current = setTimeout(() => setCopied(false), 2000);
@@ -137,6 +136,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
         }}
       >
         <Editor
+          className="codeblock"
           value={code}
           onValueChange={(code) => onChange(code, focused)}
           readOnly={!options.runnable}
@@ -203,17 +203,29 @@ function ChipButton(props: ButtonProps) {
 function highlight(
   code: string,
   options: {
-    language: string;
+    language?: string;
     br?: boolean;
     div?: React.HTMLAttributes<HTMLDivElement>;
   }
 ): React.ReactNode {
+  if (!options.language) return sanitizeHtml(code);
+
   const { language, br, div: divProps } = options;
-  const highlight = hljs.highlight(code, { language });
-  if (br) highlight.value += "<br/>";
-  return (
-    <div dangerouslySetInnerHTML={{ __html: highlight.value }} {...divProps} />
-  );
+
+  /* This code here handles inserting callouts, e.g. L1, to the code */
+  let calloutNum = 1;
+  let html = code
+    .split(/(`\[\]`)/)
+    .flatMap((s) => (s === "`[]`" ? [null] : s ? [s] : []))
+    .map((token) => {
+      if (token === null)
+        return `<span class="marker"><code>L${calloutNum++}</code></span>`;
+      return hljs.highlight(token, { language }).value;
+    })
+    .join("");
+
+  if (br) html += "<br/>";
+  return <div dangerouslySetInnerHTML={{ __html: html }} {...divProps} />;
 }
 
 function sanitizeHtml(html: string): string {

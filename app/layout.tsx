@@ -1,5 +1,6 @@
 import {
   Box,
+  BoxProps,
   Container,
   CssBaseline,
   Stack,
@@ -27,7 +28,8 @@ function Header() {
       zIndex={9999}
       borderBottom="1px solid var(--palette-divider)"
       sx={{
-        backgroundColor: "var(--palette-common-background)",
+        backgroundColor: "var(--palette-background-header)",
+        backdropFilter: "saturate(180%) blur(5px)",
       }}
       marginBottom={`calc(${NavOffset} - 4rem)`}
     >
@@ -53,17 +55,15 @@ function Header() {
   );
 }
 
-function StickyBlock({ children }: { children?: React.ReactNode }) {
+function StickyBlock(props: BoxProps) {
   return (
     <Box
       width={300}
       height={`calc(100vh - ${NavOffset})`}
-      display={{ xs: "none", md: "block" }}
       top={NavOffset}
       position="sticky"
-    >
-      {children}
-    </Box>
+      {...props}
+    />
   );
 }
 
@@ -79,13 +79,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Header />
             <Container maxWidth="xl">
               <Box display="flex" flexDirection="row">
-                <StickyBlock>
+                <StickyBlock display={{ xs: "none", md: "block" }}>
                   <ChapterTree />
                 </StickyBlock>
                 <Box flexGrow={1}>
                   <Container maxWidth="md">{children}</Container>
                 </Box>
-                <StickyBlock>
+                <StickyBlock display={{ xs: "none", lg: "block" }}>
                   {/* This is a placeholder for an eventual page TOC. */}
                 </StickyBlock>
               </Box>

@@ -13,6 +13,7 @@ export default function Lightswitch() {
     <IconButton onClick={() => setMode(mode === "dark" ? "light" : "dark")}>
       <SvgIcon
         sx={{
+          fontSize: "16px",
           color: "var(--palette-common-onBackground)",
           ...theme.applyStyles("light", {
             "& .dark": { display: "none" },
@@ -21,7 +22,6 @@ export default function Lightswitch() {
             "& .light": { display: "none" },
           }),
         }}
-        fontSize="small"
       >
         <DarkIcon className="dark" />
         <LightIcon className="light" />

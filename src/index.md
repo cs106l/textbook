@@ -16,11 +16,11 @@ Here is a link to [another section](#code-blocks).
 
 ## Code Blocks
 
-Here is a syntax highlighted code block:
+Here is a syntax highlighted code block. Notice that you can add a callout to the code by inserting `` `[]` ``, which can be helpful if you need to refer to a particular line in the surrounding content.
 
 ```cpp
 int main() {
-  std::cout << "Hello world!" << std::endl;
+  std::cout << "Hello world!" << std::endl;`[]`
   return 0;
 }
 ```
@@ -29,7 +29,7 @@ Here is an editable syntax highlighted code block. These will ultimately be runn
 
 ```cpp,runnable
 int main() {
-  std::cout << "Hello world!" << std::endl;
+  std::cout << "Hello world!" << std::endl;`[]`
   return 0;
 }
 ```
@@ -39,7 +39,7 @@ You can initially focus on a section of the code segment by surrounding it with 
 ```cpp,runnable
 int main() {
 !!!
-std::cout << "Hello world!" << std::endl;
+std::cout << "Hello world!" << std::endl;`[]`
 return 0;
 !!!
 }

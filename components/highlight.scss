@@ -9,3 +9,14 @@
 *:where(.dark) {
   @include meta.load-css("highlight.js/styles/github-dark");
 }
+
+.codeblock .marker {
+
+  &::before,
+  &::after {
+    content: " ";
+  }
+
+  margin-left: -2px;
+  margin-right: -2px;
+}
