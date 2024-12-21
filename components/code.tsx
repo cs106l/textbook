@@ -4,7 +4,6 @@ import { Box, Button, ButtonProps, Stack } from "@mui/material";
 import React, { useMemo } from "react";
 import Editor from "react-simple-code-editor";
 
-import "./highlight.scss";
 import hljs from "highlight.js";
 import { monospace } from "@/app/theme";
 import { diffArrays } from "diff";
@@ -83,7 +82,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
   const [copied, setCopied] = React.useState(false);
   const copyTimeout = React.useRef<NodeJS.Timeout | undefined>(undefined);
   const copyCode = React.useCallback(() => {
-    navigator.clipboard.writeText(code.replace("`[]`", ""));
+    navigator.clipboard.writeText(code.replace(CalloutMarker, " "));
     setCopied(true);
     clearTimeout(copyTimeout.current);
     copyTimeout.current = setTimeout(() => setCopied(false), 2000);
@@ -200,6 +199,9 @@ function ChipButton(props: ButtonProps) {
   );
 }
 
+const CalloutMarker = "`[]`";
+const CalloutRegex = new RegExp(`(${escapeRegex(CalloutMarker)})`);
+
 function highlight(
   code: string,
   options: {
@@ -208,18 +210,17 @@ function highlight(
     div?: React.HTMLAttributes<HTMLDivElement>;
   }
 ): React.ReactNode {
-  if (!options.language) return sanitizeHtml(code);
-
   const { language, br, div: divProps } = options;
 
   /* This code here handles inserting callouts, e.g. L1, to the code */
   let calloutNum = 1;
   let html = code
-    .split(/(`\[\]`)/)
-    .flatMap((s) => (s === "`[]`" ? [null] : s ? [s] : []))
+    .split(CalloutRegex)
+    .flatMap((s) => (s === CalloutMarker ? [null] : s ? [s] : []))
     .map((token) => {
       if (token === null)
         return `<span class="marker"><code>L${calloutNum++}</code></span>`;
+      if (!language) return sanitizeHtml(token);
       return hljs.highlight(token, { language }).value;
     })
     .join("");
@@ -235,6 +236,10 @@ function sanitizeHtml(html: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
 }
 
 /* ========================================================================= */

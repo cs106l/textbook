@@ -16,6 +16,8 @@ import CppIcon from "./icon.svg";
 import Image from "next/image";
 import Lightswitch from "@/components/lightswitch";
 
+import "./global.scss";
+
 const NavOffset = "6rem";
 
 function Header() {

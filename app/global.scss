@@ -1,17 +1,17 @@
 @use "sass:meta";
 
-/* Light mode themes */
+/* Light mode code themes */
 *:where(.light) {
   @include meta.load-css("highlight.js/styles/github");
 }
 
-/* Dark mode themes */
+/* Dark mode code themes */
 *:where(.dark) {
   @include meta.load-css("highlight.js/styles/github-dark");
 }
 
+/* Code block callouts, e.g. L1, L2, etc. */
 .codeblock .marker {
-
   &::before,
   &::after {
     content: " ";
