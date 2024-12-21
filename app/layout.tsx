@@ -80,7 +80,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <CssBaseline enableColorScheme />
             <Header />
             <Container maxWidth="xl">
-              <Box display="flex" flexDirection="row">
+              <Box display={{ xs: "unset", md: "flex" }} flexDirection="row">
                 <StickyBlock display={{ xs: "none", md: "block" }}>
                   <ChapterTree />
                 </StickyBlock>
