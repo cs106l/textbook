@@ -75,6 +75,10 @@ function heading(props?: TypographyProps) {
         position: "absolute",
         left: "-24px",
         top: "50%",
+        display: {
+          xs: "none",
+          sm: "unset",
+        },
       },
       "&:hover a:before": {
         opacity: 1,
