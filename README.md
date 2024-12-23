@@ -15,3 +15,13 @@ npm run dev
 ```
 
 and then open [http://localhost:3000](http://localhost:3000) with your browser.
+
+## Under Construction
+
+- [ ] 📝 Inline quizzes
+- [ ] 💾 Memory diagrams
+- [ ] 🧜 [Mermaid](https://mermaid.js.org/) diagrams
+- [ ] 📗 Chapter list
+- [ ] 🔍 Search
+- [ ] 📚 Table of contents
+- [ ] ▶️ Runnable code
