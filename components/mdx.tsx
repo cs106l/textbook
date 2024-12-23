@@ -15,13 +15,13 @@ import React from "react";
 import { MDXProvider } from "@mdx-js/react";
 import { MDXRemote, MDXRemoteProps } from "next-mdx-remote/rsc";
 import FootnoteSection from "./footnotes";
-import CodeBlock from "./code";
 
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSlug from "rehype-slug";
+import CodeBlock from "./code";
 
 export type MDXComponents = React.ComponentProps<
   typeof MDXProvider

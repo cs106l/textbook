@@ -34,14 +34,14 @@ int main() {
 }
 ```
 
-You can initially focus on a section of the code segment by surrounding it with `!!!` lines:
+You can initially focus on a section of the code segment by surrounding it with `---` lines:
 
 ```cpp,runnable
 int main() {
-!!!
+---
 std::cout << "Hello world!" << std::endl; `[]`
 return 0;
-!!!
+---
 }
 ```
 
@@ -49,14 +49,14 @@ You can also highlight a region of code to draw attention to it by surrounding t
 
 ```cpp,runnable
 int main() {
-!!!
+---
 std::cout `[<< "Hello world!" <<]` std::endl; `[]`
 `[return 0;]` `[]`
-!!!
+---
 }
 ```
 
-Note that nesting of `` `[]` `` and `!!!` in any way (highlighting across focus boundaries, markers inside highlights) is currently unsupported.
+Note that highlighted regions cannot overlap a focus boundary (`---`).
 
 You can also use `inline code`, although this won't be syntax highlighted.
 
