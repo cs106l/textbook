@@ -22,7 +22,12 @@ export default function CodeBlock({ children }: CodeBlockProps) {
     [children]
   );
 
-  const { anchor, onChange } = useAnchor(initialContent);
+  const initialCode = useMemo(
+    () => encodeStylingCharacters(initialContent),
+    [initialContent]
+  );
+
+  const { anchor, onChange } = useAnchor(initialCode);
   const [focused, setFocused] = React.useState(true);
 
   const code = useMemo<string>(() => {
@@ -82,7 +87,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
   const [copied, setCopied] = React.useState(false);
   const copyTimeout = React.useRef<NodeJS.Timeout | undefined>(undefined);
   const copyCode = React.useCallback(() => {
-    navigator.clipboard.writeText(code.replace(CalloutMarker, " "));
+    navigator.clipboard.writeText(removeHiddenStyles(code));
     setCopied(true);
     clearTimeout(copyTimeout.current);
     copyTimeout.current = setTimeout(() => setCopied(false), 2000);
@@ -199,9 +204,6 @@ function ChipButton(props: ButtonProps) {
   );
 }
 
-const CalloutMarker = "`[]`";
-const CalloutRegex = new RegExp(`(${escapeRegex(CalloutMarker)})`);
-
 function highlight(
   code: string,
   options: {
@@ -212,18 +214,10 @@ function highlight(
 ): React.ReactNode {
   const { language, br, div: divProps } = options;
 
-  /* This code here handles inserting callouts, e.g. L1, to the code */
-  let calloutNum = 1;
-  let html = code
-    .split(CalloutRegex)
-    .flatMap((s) => (s === CalloutMarker ? [null] : s ? [s] : []))
-    .map((token) => {
-      if (token === null)
-        return `<span class="marker"><code>L${calloutNum++}</code></span>`;
-      if (!language) return sanitizeHtml(token);
-      return hljs.highlight(token, { language }).value;
-    })
-    .join("");
+  let html = styleText(code, (text) => {
+    if (!language) return sanitizeHtml(text);
+    return hljs.highlight(text, { language }).value;
+  });
 
   if (br) html += "<br/>";
   return <div dangerouslySetInnerHTML={{ __html: html }} {...divProps} />;
@@ -236,10 +230,6 @@ function sanitizeHtml(html: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
-}
-
-function escapeRegex(text: string): string {
-  return text.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
 }
 
 /* ========================================================================= */
@@ -387,6 +377,68 @@ function useAnchor(initialCode: string): {
   );
 
   return { anchor, onChange };
+}
+
+/* ========================================================================= */
+/* Styling code blocks (highlighting, line markers)                          */
+/* ========================================================================= */
+
+const MarkerRegex = /\u200C () \u200C/g;
+const HighlightRegex = /\u200B(.*?)\u200B/gs;
+const Decorations = [MarkerRegex, HighlightRegex];
+
+const DecorationRegex = new RegExp(
+  `(${Decorations.map((r) => r.source.replace(/\(|\)/g, "")).join("|")})`,
+  "gs"
+);
+
+function removeHiddenStyles(code: string): string {
+  return Decorations.reduce((acc, regex) => acc.replace(regex, "$1"), code);
+}
+
+/**
+ * Encodes styling metadata into the code using zero-width characters.
+ */
+function encodeStylingCharacters(code: string) {
+  return code
+    .replace(/`\[\]`/g, "\u200C  \u200C")
+    .replace(/`\[(.*?)\]`/gs, "\u200B$1\u200B");
+}
+
+function styleText(code: string, styler: (text: string) => string): string {
+  let calloutNum = 1;
+  return code
+    .split(DecorationRegex)
+    .map((s) => {
+      if (s.match(MarkerRegex))
+        return {
+          type: "marker",
+          content: `L${calloutNum++}`,
+        };
+
+      const highlightMatch = HighlightRegex.exec(s);
+      if (highlightMatch) {
+        return {
+          type: "highlight",
+          content: highlightMatch[1],
+        };
+      }
+      return {
+        type: "text",
+        content: s,
+      };
+    })
+    .map((token) => {
+      if (!token.content) return "";
+      if (token.type === "marker")
+        return `<span class="marker"><code>${token.content}</code></span>`;
+
+      const styled = styler(token.content);
+      if (token.type === "highlight")
+        return `<span class="highlight">${styled}</span>`;
+      return styled;
+    })
+    .join("");
 }
 
 /* ========================================================================= */

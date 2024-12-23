@@ -12,11 +12,19 @@
 
 /* Code block callouts, e.g. L1, L2, etc. */
 .codeblock .marker {
-  &::before,
-  &::after {
-    content: " ";
-  }
-
   margin-left: -2px;
   margin-right: -2px;
+}
+
+.codeblock .highlight {
+  padding-left: 3px;
+  padding-right: 3px;
+  background-color: #ffed25a3;
+  border-radius: var(--shape-borderRadius);
+  margin-left: -3px;
+  margin-right: -3px;
+
+  *:where(.dark) & {
+    background-color: #fff79955;
+  }
 }
