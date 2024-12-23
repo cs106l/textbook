@@ -9,14 +9,22 @@
 *:where(.dark) {
   @include meta.load-css("highlight.js/styles/github-dark");
 }
-
-/* Code block callouts, e.g. L1, L2, etc. */
-.codeblock .marker {
-  &::before,
-  &::after {
-    content: " ";
+.codeblock {
+  .marker {
+    margin-left: -2px;
+    margin-right: -2px;
   }
 
-  margin-left: -2px;
-  margin-right: -2px;
+  .highlight {
+    background-color: #ffde69aa;
+    padding-left: 3px;
+    padding-right: 3px;
+    margin-left: -3px;
+    margin-right: -3px;
+    border-radius: var(--shape-borderRadius);
+  }
+
+  .hide {
+    opacity: 0.5;
+  }
 }

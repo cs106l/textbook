@@ -1,12 +1,49 @@
 "use client";
 
 import { Box, Button, ButtonProps, Stack } from "@mui/material";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import Editor from "react-simple-code-editor";
 
 import hljs from "highlight.js";
 import { monospace } from "@/app/theme";
-import { diffArrays } from "diff";
+import {
+  DecorationMatcher,
+  reduceDecorations,
+  Reducer,
+  useDecorations,
+} from "./code/decorations";
+
+type Tag = "hide" | "marker" | "highlight";
+
+const matchers: DecorationMatcher<Tag>[] = [
+  {
+    pattern: /^(#)(.*\n?)/m,
+    extract: (match) => ({
+      token: match[2],
+      data: "hide",
+      transform(child) {
+        child.start -= match[1].length;
+      },
+    }),
+  },
+  {
+    pattern: /`\[\]`/,
+    extract: (_, index) => ({
+      token: `L${index + 1}`,
+      data: "marker",
+    }),
+  },
+  {
+    pattern: /(`\[)(.*)\]`/s,
+    extract: (match) => ({
+      token: match[2],
+      data: "highlight",
+      transform(child) {
+        child.start -= match[1].length;
+      },
+    }),
+  },
+];
 
 /* ========================================================================= */
 /* CodeBlock                                                                 */
@@ -22,71 +59,62 @@ export default function CodeBlock({ children }: CodeBlockProps) {
     [children]
   );
 
-  const { anchor, onChange } = useAnchor(initialContent);
-  const [focused, setFocused] = React.useState(true);
+  const { decorated, onChange } = useDecorations<Tag>({
+    initialCode: initialContent,
+    matchers,
+  });
 
-  const code = useMemo<string>(() => {
-    if (!anchor.hasAnchor) return anchor.code;
-    if (focused) return anchor.lines.slice(anchor.start, anchor.end).join("\n");
-    return anchor.lines.join("\n");
-  }, [anchor, focused]);
+  console.log(decorated);
+
+  const [focused, setFocused] = React.useState(true);
+  const hasFocus = useMemo(
+    () => decorated.decorations.some((d) => d.data === "hide"),
+    [decorated]
+  );
+
+  const awareReduce = useCallback(
+    (reducer: Reducer<Tag>) => {
+      return reduceDecorations(decorated, (token, data) => {
+        if (hasFocus && focused && data === "hide") return "";
+        return reducer(token, data);
+      });
+    },
+    [decorated, focused]
+  );
+
+  const code = useMemo<string>(
+    () => awareReduce((token) => token),
+    [awareReduce]
+  );
 
   const highlighter = React.useCallback(
-    (code: string) => {
-      if (!anchor.hasAnchor || focused)
-        return highlight(code, { language: options.language, br: true });
+    () =>
+      awareReduce((token, data) => {
+        if (!data) {
+          if (!options.language) return sanitizeHtml(token);
+          return hljs.highlight(token, { language: options.language }).value;
+        }
 
-      const before = anchor.lines.slice(0, anchor.start);
-      const between = anchor.lines.slice(anchor.start, anchor.end);
-      const after = anchor.lines.slice(anchor.end);
-
-      // Handle missing newlines
-      if (between.length) before.push("");
-      if (after.length) between.push("");
-
-      /* Note: To get parity between react-simple-editor textarea and pre,
-       * we must terminate the last highlight div with a <br /> tag.
-       * Otherwise, inserting a newline at the end of the textarea
-       * won't match up with the pre element
-       */
-
-      return (
-        <>
-          {before.length > 0 &&
-            highlight(before.join("\n"), {
-              br: between.length === 0 && after.length === 0,
-              language: options.language,
-              div: {
-                className: "anchor-dim",
-              },
-            })}
-          {between.length > 0 &&
-            highlight(between.join("\n"), {
-              br: after.length === 0,
-              language: options.language,
-            })}
-          {after.length > 0 &&
-            highlight(after.join("\n"), {
-              br: true,
-              language: options.language,
-              div: {
-                className: "anchor-dim",
-              },
-            })}
-        </>
-      );
-    },
-    [options, anchor, focused]
+        if (data === "marker")
+          return `<span class="marker"><code>${token}</code></span>`;
+        if (data === "highlight")
+          return `<span class="highlight">${token}</span>`;
+        if (data === "hide") return `<span class="hide">${token}</span>`;
+        return token;
+      }),
+    [awareReduce, options.language]
   );
 
   const [copied, setCopied] = React.useState(false);
   const copyTimeout = React.useRef<NodeJS.Timeout | undefined>(undefined);
   const copyCode = React.useCallback(() => {
-    navigator.clipboard.writeText(code.replace(CalloutMarker, " "));
+    navigator.clipboard.writeText(
+      awareReduce((token, data) => (data === "marker" ? "" : token))
+    );
     setCopied(true);
     clearTimeout(copyTimeout.current);
     copyTimeout.current = setTimeout(() => setCopied(false), 2000);
-  }, [code]);
+  }, [awareReduce]);
 
   return (
     <Box
@@ -109,10 +137,6 @@ export default function CodeBlock({ children }: CodeBlockProps) {
 
         "&:hover .actions": {
           opacity: 1,
-        },
-
-        "& .anchor-dim": {
-          opacity: 0.5,
         },
       }}
     >
@@ -137,7 +161,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
         <Editor
           className="codeblock"
           value={code}
-          onValueChange={(code) => onChange(code, focused)}
+          onValueChange={onChange}
           readOnly={!options.runnable}
           highlight={highlighter}
           placeholder={options.runnable ? "Type some code..." : undefined}
@@ -163,7 +187,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
         <ChipButton onClick={copyCode}>
           {copied ? "Copied!" : "Copy"}
         </ChipButton>
-        {anchor.hasAnchor && (
+        {hasFocus && (
           <ChipButton onClick={() => setFocused((focused) => !focused)}>
             {focused ? "Show" : "Hide"}
           </ChipButton>
@@ -199,36 +223,6 @@ function ChipButton(props: ButtonProps) {
   );
 }
 
-const CalloutMarker = "`[]`";
-const CalloutRegex = new RegExp(`(${escapeRegex(CalloutMarker)})`);
-
-function highlight(
-  code: string,
-  options: {
-    language?: string;
-    br?: boolean;
-    div?: React.HTMLAttributes<HTMLDivElement>;
-  }
-): React.ReactNode {
-  const { language, br, div: divProps } = options;
-
-  /* This code here handles inserting callouts, e.g. L1, to the code */
-  let calloutNum = 1;
-  let html = code
-    .split(CalloutRegex)
-    .flatMap((s) => (s === CalloutMarker ? [null] : s ? [s] : []))
-    .map((token) => {
-      if (token === null)
-        return `<span class="marker"><code>L${calloutNum++}</code></span>`;
-      if (!language) return sanitizeHtml(token);
-      return hljs.highlight(token, { language }).value;
-    })
-    .join("");
-
-  if (br) html += "<br/>";
-  return <div dangerouslySetInnerHTML={{ __html: html }} {...divProps} />;
-}
-
 function sanitizeHtml(html: string): string {
   return html
     .replace(/&/g, "&amp;")
@@ -236,157 +230,6 @@ function sanitizeHtml(html: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
-}
-
-function escapeRegex(text: string): string {
-  return text.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-}
-
-/* ========================================================================= */
-/* Anchoring Code                                                            */
-/* ========================================================================= */
-
-type AnchorlessCode = {
-  hasAnchor: false;
-  code: string;
-};
-
-type AnchoredCode = {
-  hasAnchor: true;
-  lines: string[];
-  start: number;
-  end: number;
-};
-
-type Anchor = AnchorlessCode | AnchoredCode;
-
-/**
- * Computes the new anchor after a change in the code.
- * Given a previous anchor and the new code, this function determines the new
- * `start` and `end` indices of the anchored region.
- *
- * @param anchor The existing anchor.
- * @param lines The new code lines.
- * @returns A new anchored code.
- */
-function preserveAnchor(anchor: AnchoredCode, lines: string[]): AnchoredCode {
-  const changes = diffArrays(anchor.lines, lines);
-
-  let originalPos = 0; // Position in the original text
-  let modifiedPos = 0; // Position in the modified text
-  let newStart = anchor.start;
-  let newEnd = anchor.end;
-
-  for (const change of changes) {
-    const length = change.value.length;
-
-    if (change.added) {
-      // Adjust indices if additions occur before or within the range
-      if (modifiedPos <= newStart) {
-        newStart += length;
-        newEnd += length;
-      } else if (modifiedPos <= newEnd) {
-        newEnd += length;
-      }
-      modifiedPos += length;
-    } else if (change.removed) {
-      // Adjust indices if removals overlap the range
-      if (originalPos < anchor.start && originalPos + length > anchor.start) {
-        newStart = originalPos;
-      }
-      if (originalPos < anchor.end && originalPos + length > anchor.end) {
-        newEnd = originalPos;
-      }
-      originalPos += length;
-    } else {
-      // Unchanged text: Move both pointers and adjust indices
-      if (originalPos <= anchor.start && originalPos + length > anchor.start) {
-        newStart = modifiedPos + (anchor.start - originalPos);
-      }
-      if (originalPos <= anchor.end && originalPos + length > anchor.end) {
-        newEnd = modifiedPos + (anchor.end - originalPos);
-      }
-      originalPos += length;
-      modifiedPos += length;
-    }
-  }
-
-  return { hasAnchor: true, lines, start: newStart, end: newEnd };
-}
-
-function useAnchor(initialCode: string): {
-  anchor: Anchor;
-  onChange: (newCode: string, isFocused: boolean) => void;
-} {
-  // 1. Extract anchor (or not) from initial code
-  // 2. If code has no anchor, return anchorless result
-  //     - code: stateful string
-  //     - onChange: update code
-  // 3. If code has anchor, return anchored result
-  //    - lines: split code by line
-  //    - start: line number of start anchor
-  //    - end: line number of end anchor + 1
-  //    - onChange: update code, do diff
-
-  const initialAnchor = React.useMemo<Anchor>(() => {
-    const lines = initialCode.split("\n");
-    const start = lines.indexOf("!!!");
-    const end = lines.lastIndexOf("!!!");
-
-    if (start === -1 && end === -1) {
-      return { hasAnchor: false, code: initialCode };
-    }
-
-    if (start === end) {
-      return { hasAnchor: false, code: initialCode };
-    }
-
-    // Anchor covers entire code block, same as if anchor wasn't there
-    if (start === 0 && end === lines.length - 1) {
-      return {
-        hasAnchor: false,
-        code: lines.slice(1, lines.length - 1).join("\n"),
-      };
-    }
-
-    const before = lines.slice(0, start);
-    const between = lines.slice(start + 1, end);
-    const after = lines.slice(end + 1);
-
-    return {
-      hasAnchor: true,
-      lines: [...before, ...between, ...after],
-      start: before.length,
-      end: before.length + between.length,
-    };
-  }, [initialCode]);
-
-  const [anchor, setAnchor] = React.useState<Anchor>(initialAnchor);
-  const onChange = React.useCallback(
-    (code: string, isFocused: boolean) => {
-      if (!anchor.hasAnchor) {
-        return setAnchor({ hasAnchor: false, code });
-      }
-
-      const lines = code.split("\n");
-
-      if (isFocused) {
-        const before = anchor.lines.slice(0, anchor.start);
-        const after = anchor.lines.slice(anchor.end);
-        return setAnchor({
-          hasAnchor: true,
-          lines: [...before, ...lines, ...after],
-          start: anchor.start,
-          end: anchor.start + lines.length,
-        });
-      }
-
-      setAnchor(preserveAnchor(anchor, lines));
-    },
-    [anchor]
-  );
-
-  return { anchor, onChange };
 }
 
 /* ========================================================================= */
@@ -431,7 +274,7 @@ function extractContent(node: React.ReactNode): PreContent {
   const className = props.className;
 
   if (typeof children !== "string") throw invalid;
-  if (children.endsWith("\n")) children = children.slice(0, -1);
+  // if (children.endsWith("\n")) children = children.slice(0, -1);
   return {
     options: getOptions(className),
     initialContent: children,

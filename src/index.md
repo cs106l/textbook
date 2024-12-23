@@ -37,12 +37,10 @@ int main() {
 You can initially focus on a section of the code segment by surrounding it with `!!!` lines:
 
 ```cpp,runnable
-int main() {
-!!!
-std::cout << "Hello world!" << std::endl;`[]`
+# int main() {
+`[std::cout << `[]` "Hello world!" << std::endl;]`
 return 0;
-!!!
-}
+# }
 ```
 
 You can also use `inline code`, although this won't be syntax highlighted.
