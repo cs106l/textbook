@@ -18,8 +18,8 @@ const remarkQuiz: Plugin = () => {
     const quizNodes: Code[] = [];
 
     visit(tree, "code", function (node: Code) {
-      const options = getOptions(node.lang);
-      if (options.type !== "quiz") return;
+      const [type] = getOptions(node.lang);
+      if (type !== "quiz") return;
       quizNodes.push(node);
     });
 

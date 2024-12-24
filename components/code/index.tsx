@@ -8,55 +8,7 @@ import hljs from "highlight.js";
 import { monospace } from "@/app/theme";
 import { ReducerContext, StyleParser } from "./styles";
 import useFocus from "./focus";
-
-/* ========================================================================= */
-/* Extracting <pre /> content from markdown                                  */
-/* ========================================================================= */
-
-type PreOptions = {
-  language?: string;
-  runnable?: boolean;
-};
-
-type PreContent = {
-  options: PreOptions;
-  initialContent: string;
-};
-
-function getOptions(rawString?: string): PreOptions {
-  if (!rawString) return {};
-
-  const removePrefix = "language-";
-  if (rawString.startsWith(removePrefix))
-    rawString = rawString.slice(removePrefix.length);
-
-  const options = rawString.split(",");
-  return {
-    language: options[0],
-    runnable: options.includes("runnable"),
-  };
-}
-
-function extractContent(node: React.ReactNode): PreContent {
-  const invalid = new Error("Invalid <code /> structure");
-
-  if (!React.isValidElement(node) || node.type !== "code") throw invalid;
-
-  const props = node.props as {
-    children?: string;
-    className?: string;
-  };
-
-  let children = props.children;
-  const className = props.className;
-
-  if (typeof children !== "string") throw invalid;
-  if (children.endsWith("\n")) children = children.slice(0, -1);
-  return {
-    options: getOptions(className),
-    initialContent: children,
-  };
-}
+import { PreContent } from "../pre";
 
 /* ========================================================================= */
 /* Styling code blocks (highlighting, line markers)                          */
@@ -115,15 +67,10 @@ function sanitizeHtml(html: string): string {
 /* CodeBlock                                                                 */
 /* ========================================================================= */
 
-export type CodeBlockProps = {
-  children: React.ReactNode;
-};
-
-export default function CodeBlock({ children }: CodeBlockProps) {
-  const { options, initialCode } = useMemo(() => {
-    const content = extractContent(children);
-    return { ...content, initialCode: Styles.markdown(content.initialContent) };
-  }, [children]);
+export default function CodeBlock({ options, content }: PreContent) {
+  const initialCode = useMemo(() => Styles.markdown(content), [content]);
+  const language = options.length > 0 ? options[0] : undefined;
+  const runnable = options.includes("runnable");
 
   const { focus, onChange } = useFocus(initialCode, "---");
   const [focused, setFocused] = React.useState(true);
@@ -140,7 +87,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
   const highlighter = React.useCallback(
     (code: string) => {
       if (!focus.hasFocus || focused)
-        return highlight(code, { language: options.language, br: true });
+        return highlight(code, { language, br: true });
 
       const before = focus.lines.slice(0, focus.start);
       const between = focus.lines.slice(
@@ -165,7 +112,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
           {before.length > 0 &&
             highlight(before.join("\n"), {
               br: between.length === 0 && after.length === 0,
-              language: options.language,
+              language,
               div: {
                 className: "anchor-dim",
               },
@@ -174,13 +121,13 @@ export default function CodeBlock({ children }: CodeBlockProps) {
           {between.length > 0 &&
             highlight(between.join("\n"), {
               br: after.length === 0,
-              language: options.language,
+              language,
               context,
             })}
           {after.length > 0 &&
             highlight(after.join("\n"), {
               br: true,
-              language: options.language,
+              language,
               div: {
                 className: "anchor-dim",
               },
@@ -189,7 +136,7 @@ export default function CodeBlock({ children }: CodeBlockProps) {
         </>
       );
     },
-    [options, focus, focused]
+    [focus, focused, language]
   );
 
   const [copied, setCopied] = React.useState(false);
@@ -245,16 +192,16 @@ export default function CodeBlock({ children }: CodeBlockProps) {
           // Set tabindex to -1 if code is not runnable
           if (!el) return;
           const textarea = el.querySelector("textarea");
-          if (textarea) textarea.tabIndex = options.runnable ? 0 : -1;
+          if (textarea) textarea.tabIndex = runnable ? 0 : -1;
         }}
       >
         <Editor
           className="codeblock"
           value={code}
           onValueChange={(code) => onChange(code, focused)}
-          readOnly={!options.runnable}
+          readOnly={!runnable}
           highlight={highlighter}
-          placeholder={options.runnable ? "Type some code..." : undefined}
+          placeholder={runnable ? "Type some code..." : undefined}
           style={{
             overflow: "visible",
             float: "left",
