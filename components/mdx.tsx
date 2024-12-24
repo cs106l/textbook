@@ -13,7 +13,12 @@ import {
 import React from "react";
 
 import { MDXProvider } from "@mdx-js/react";
-import { MDXRemote, MDXRemoteProps } from "next-mdx-remote/rsc";
+import {
+  MDXRemote as MDXRemoteServer,
+  MDXRemoteProps as MDXRemoteServerProps,
+} from "next-mdx-remote/rsc";
+import { serialize as mdxRemoteSerialize } from "next-mdx-remote/serialize";
+import { MDXRemote as MDXRemoteClient } from "next-mdx-remote";
 import FootnoteSection from "./footnotes";
 
 import remarkMath from "remark-math";
@@ -22,20 +27,17 @@ import remarkGfm from "remark-gfm";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSlug from "rehype-slug";
 import CodeBlock from "./code";
+import remarkQuiz from "./quiz/remark";
+
+/* ========================================================================= */
+/* Styling and MDX Compilation                                               */
+/* ========================================================================= */
 
 export type MDXComponents = React.ComponentProps<
   typeof MDXProvider
 >["components"];
 
-export type SerializeOptions = NonNullable<MDXRemoteProps["options"]>;
-
-export type MDXProps = Pick<MDXRemoteProps, "source">;
-
-export default function MDX({ source }: MDXProps) {
-  return (
-    <MDXRemote source={source} components={components} options={options} />
-  );
-}
+export type SerializeOptions = NonNullable<MDXRemoteServerProps["options"]>;
 
 function typography(props?: TypographyProps) {
   return function CustomTypography({
@@ -127,7 +129,7 @@ export const components: Readonly<MDXComponents> = {
 
 export const options: Readonly<SerializeOptions> = {
   mdxOptions: {
-    remarkPlugins: [remarkGfm, remarkMath],
+    remarkPlugins: [remarkGfm, remarkMath, remarkQuiz],
     rehypePlugins: [
       rehypeKatex,
       rehypeSlug,
@@ -136,3 +138,33 @@ export const options: Readonly<SerializeOptions> = {
   },
   parseFrontmatter: true,
 };
+
+/* ========================================================================= */
+/* Server-side rendering                                                     */
+/* ========================================================================= */
+
+export type MDXServerProps = Pick<MDXRemoteServerProps, "source">;
+
+export function MDXServer({ source }: MDXServerProps) {
+  return (
+    <MDXRemoteServer
+      source={source}
+      components={components}
+      options={options}
+    />
+  );
+}
+
+/* ========================================================================= */
+/* Client-side rendering                                                     */
+/* ========================================================================= */
+
+export type MDXClientProps = Awaited<ReturnType<typeof mdxRemoteSerialize>>;
+
+export function MDXClient(props: MDXClientProps) {
+  return <MDXRemoteClient components={components} {...props} />;
+}
+
+export function serializeMDX(source: string) {
+  return mdxRemoteSerialize(source, options);
+}

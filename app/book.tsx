@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import matter from "gray-matter";
-import MDX, { MDXProps } from "@/components/mdx";
+import { MDXServer, type MDXServerProps } from "@/components/mdx";
 import { Typography } from "@mui/material";
 
 import "katex/dist/katex.min.css";
@@ -185,7 +185,7 @@ async function buildNode(nodePath: string): Promise<BookNode> {
 function Page({
   meta,
   ...rest
-}: MDXProps & {
+}: MDXServerProps & {
   meta: NodeMetadata;
 }) {
   return (
@@ -193,7 +193,7 @@ function Page({
       <Typography variant="h1" mb={1} pt={1}>
         {meta.title}
       </Typography>
-      <MDX {...rest} />
+      <MDXServer {...rest} />
     </>
   );
 }

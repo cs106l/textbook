@@ -94,3 +94,29 @@ You can use blockquotes to interleave information.
 > 
 
 Here is some text beneath the blockquote.
+
+## Quizzes
+
+```yaml,quiz
+name: basic-types
+questions:
+  q1:
+    type: multiple-choice
+    prompt: This is a quiz question
+    answers: 
+      a1: Answer
+    distractors:
+      d1: A wrong answer
+      d2: Another wrong answer
+      d3: Another wrong answer!!
+```
+
+A quiz question is uniquely determined by the combination of:
+
+- The `name` of its containing quiz
+- The `type` of the question
+- The keyset of its `answers`
+- The keyset of its `distractors`
+
+Changing any one of (e.g. changing the quiz name, adding/removing a response) will mean that the quiz is substantively different.
+
