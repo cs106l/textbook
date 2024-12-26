@@ -127,6 +127,20 @@ const theme = createTheme({
         root: { border: "1px solid var(--palette-divider)" },
       },
     },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          paddingLeft: "8px",
+          paddingRight: "8px",
+          paddingBottom: 0,
+          paddingTop: 0,
+          minWidth: "unset",
+          transition: "none",
+          borderColor: "var(--palette-grey-400)",
+        },
+      },
+    },
   },
 });
 

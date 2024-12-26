@@ -28,7 +28,7 @@ const QuestionSchema = z
   .and(QuestionBaseSchema);
 
 export const QuizSchema = z.object({
-  name: z.string(),
+  quiz: z.string(),
   questions: z.record(QuestionSchema),
 });
 

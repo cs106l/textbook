@@ -98,7 +98,7 @@ Here is some text beneath the blockquote.
 ## Quizzes
 
 ```yaml,quiz
-name: basic-types
+quiz: basic-types
 questions:
   q1:
     type: multiple-choice
