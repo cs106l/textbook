@@ -27,7 +27,7 @@ function Header() {
       position="sticky"
       height="4rem"
       top={0}
-      zIndex={9999}
+      zIndex="var(--zIndex-appBar)"
       borderBottom="1px solid var(--palette-divider)"
       sx={{
         backgroundColor: "var(--palette-background-header)",
@@ -85,7 +85,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <ChapterTree />
                 </StickyBlock>
                 <Box flexGrow={1}>
-                  <Container maxWidth="md" sx={{ padding: 0 }}>{children}</Container>
+                  <Container maxWidth="md" sx={{ padding: 0 }}>
+                    {children}
+                  </Container>
                 </Box>
                 <StickyBlock display={{ xs: "none", lg: "block" }}>
                   {/* This is a placeholder for an eventual page TOC. */}
