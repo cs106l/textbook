@@ -131,15 +131,28 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           textTransform: "none",
-          paddingLeft: "8px",
-          paddingRight: "8px",
+          paddingLeft: "6px",
+          paddingRight: "6px",
           paddingBottom: 0,
           paddingTop: 0,
           minWidth: "unset",
           transition: "none",
+          fontWeight: "normal",
+
           borderColor: "var(--palette-grey-400)",
+          "*:where(.dark) &": {
+            borderColor: "var(--palette-grey-600)",
+          },
         },
       },
+      variants: [
+        {
+          props: { variant: "outlined" },
+          style: {
+            backgroundColor: "var(--palette-background-code)",
+          },
+        },
+      ],
     },
   },
 });

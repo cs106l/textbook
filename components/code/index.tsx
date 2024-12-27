@@ -244,7 +244,7 @@ function ChipButton(props: ButtonProps) {
         pointerEvents: "auto",
         fontSize: "0.75em",
         px: "4px",
-        color: "var(--palette-grey-600)",
+        color: "var(--palette-grey-700)",
         borderColor: "var(--palette-grey-300)",
         backgroundColor: "var(--palette-background-code)",
         ...theme.applyStyles("dark", {
