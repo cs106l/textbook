@@ -13,9 +13,11 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { Quiz } from "./schema";
-import React, { useEffect } from "react";
+import { Question, Quiz } from "./schema";
+import React, { useEffect, useMemo } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
+import { MDXClient } from "../mdx";
+import RadioGroup from "./radio";
 
 export default function QuizView({ content }: PreContent) {
   const quiz = JSON.parse(content) as Quiz;
@@ -67,7 +69,7 @@ function QuizBox({
         <Typography variant="h3">Quiz</Typography>
         {header}
       </Stack>
-      {children}
+      <Box>{children}</Box>
     </Stack>
   );
 }
@@ -84,6 +86,13 @@ function QuizModal({
   const [help, setHelp] = React.useState(false);
   const [index, setIndex] = React.useState(0);
 
+  const questions = useMemo(() => {
+    const entries = Object.entries(quiz.questions);
+    return entries.sort((a, b) => a[0].localeCompare(b[0]));
+  }, []);
+
+  const question = questions[index][1];
+
   useEffect(() => {
     if (!open) return;
     setHelp(false);
@@ -93,7 +102,6 @@ function QuizModal({
   return (
     <Modal
       open={open}
-      onClose={() => setOpen(false)}
       slotProps={{
         backdrop: {
           sx: {
@@ -103,13 +111,14 @@ function QuizModal({
         },
       }}
       closeAfterTransition
+      sx={{ overflow: "auto" }}
     >
       <Fade in={open}>
         <Container
           maxWidth="md"
           sx={{
             position: "relative",
-            mt: 6,
+            my: 6,
             transition: "all 0.3s",
           }}
         >
@@ -118,14 +127,20 @@ function QuizModal({
             header={`Question ${index + 1}/${
               Object.keys(quiz.questions).length
             }`}
-          />
-          <Stack width={{ xs: 1, sm: 0.5 }} sx={{ float: "right" }}>
+          >
+            <QuestionPrompt question={question} index={index} />
+            <QuestionResponses question={question} />
+          </QuizBox>
+          <Stack
+            width={{ xs: 1, sm: 0.5 }}
+            sx={{ float: "right" }}
+            textAlign="right"
+          >
             <Typography
               variant="caption"
               fontStyle="italic"
               color="text.secondary"
               sx={{ cursor: "pointer" }}
-              textAlign="right"
               onClick={() => setHelp((v) => !v)}
             >
               Why is this quiz fullscreen?
@@ -166,6 +181,56 @@ function CloseButton({ onClose }: { onClose: () => void }) {
       >
         <XMarkIcon />
       </SvgIcon>
+    </Box>
+  );
+}
+
+function QuestionPrompt({
+  question,
+  index,
+}: {
+  question: Question;
+  index: number;
+}) {
+  return (
+    <blockquote>
+      <Typography variant="h4" mb={1}>
+        Question {index + 1}
+      </Typography>
+      <MDXClient {...question.prompt} />
+    </blockquote>
+  );
+}
+
+function QuestionResponses({ question }: { question: Question }) {
+  const responses = [
+    ...Object.entries(question.answers),
+    ...Object.entries(question.distractors),
+  ].map(([key, value]) => ({
+    key,
+    label: <MDXClient {...value} removeMargin />,
+  }));
+
+  const [answer, setAnswer] = React.useState<string[]>([]);
+
+  return (
+    <Box>
+      <RadioGroup
+        multiple={Object.keys(question.answers).length > 1}
+        value={answer}
+        onChange={setAnswer}
+        options={responses}
+        sx={{
+          width: "100%",
+          marginBottom: 2,
+          "& .MuiFormControlLabel-label": { width: "100%" },
+        }}
+      />
+      <Box>
+        <Button variant="outlined" color="inherit">
+          Submit
+        </Button>
+      </Box>
     </Box>
   );
 }

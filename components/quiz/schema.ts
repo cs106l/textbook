@@ -37,3 +37,11 @@ export type MultipleChoiceQuestion = Quiz & {
 };
 export type Question = z.infer<typeof QuestionSchema>;
 export type Quiz = z.infer<typeof QuizSchema>;
+
+const MultipleChoiceAnswerSchema = z.object({
+  type: z.literal(QuestionType.MultipleChoice),
+  answers: z.string().array().nonempty(),
+});
+
+const AnswerSchema = z.discriminatedUnion("type", [MultipleChoiceAnswerSchema]);
+export type Answer = z.infer<typeof AnswerSchema>;

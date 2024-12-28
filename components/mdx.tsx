@@ -1,4 +1,5 @@
 import {
+  Box,
   Divider,
   Link,
   Table,
@@ -159,10 +160,22 @@ export function MDXServer({ source }: MDXServerProps) {
 /* Client-side rendering                                                     */
 /* ========================================================================= */
 
-export type MDXClientProps = Awaited<ReturnType<typeof mdxRemoteSerialize>>;
+export type MDXClientProps = Awaited<ReturnType<typeof mdxRemoteSerialize>> & {
+  removeMargin?: boolean;
+};
 
 export function MDXClient(props: MDXClientProps) {
-  return <MDXRemoteClient components={components} {...props} />;
+  return (
+    <Box
+      sx={{
+        ...(props.removeMargin && {
+          "& > *:last-child": { marginBottom: 0 },
+        }),
+      }}
+    >
+      <MDXRemoteClient components={components} {...props} />
+    </Box>
+  );
 }
 
 export function serializeMDX(source: string) {

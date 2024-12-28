@@ -104,7 +104,13 @@ questions:
     type: multiple-choice
     prompt: This is a quiz question
     answers: 
-      a1: Answer
+      a1: |
+        ~~~cpp
+        void foo() { 
+          std::cout << "hello" << std::endl; 
+        }
+        ~~~
+      a2: Another answer
     distractors:
       d1: A wrong answer
       d2: Another wrong answer

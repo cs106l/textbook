@@ -98,6 +98,8 @@ const theme = createTheme({
           margin: 0,
           paddingLeft: "24px",
           color: "var(--palette-text-secondary)",
+          "& > *:last-child": { marginBottom: 0 },
+          marginBottom: theme.spacing(2),
         },
       }),
     },
@@ -153,6 +155,20 @@ const theme = createTheme({
           },
         },
       ],
+    },
+    MuiRadio: {
+      defaultProps: {
+        disableRipple: true,
+        disableTouchRipple: true,
+        size: "small",
+      },
+    },
+    MuiCheckbox: {
+      defaultProps: {
+        disableRipple: true,
+        disableTouchRipple: true,
+        size: "small",
+      },
     },
   },
 });
