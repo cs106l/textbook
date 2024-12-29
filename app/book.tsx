@@ -6,6 +6,7 @@ import { MDXServer, type MDXServerProps } from "@/components/mdx";
 import { Typography } from "@mui/material";
 
 import "katex/dist/katex.min.css";
+import { cache } from "react";
 
 export type Book = BookNode[];
 
@@ -43,7 +44,7 @@ const MetadataSchema = z.object({
   nav_title: z.string().optional(),
 });
 
-export async function buildBook(): Promise<Book> {
+async function build(): Promise<Book> {
   const node = await buildNode("src");
 
   // The returned book applies a transformation on the node tree.
@@ -59,6 +60,8 @@ export async function buildBook(): Promise<Book> {
 
   return nodes;
 }
+
+export const buildBook = cache(build);
 
 async function buildNode(nodePath: string): Promise<BookNode> {
   if (!fs.existsSync(nodePath))

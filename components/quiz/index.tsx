@@ -13,14 +13,52 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { Question, Quiz } from "./schema";
-import React, { useEffect, useMemo } from "react";
+import {
+  Answer,
+  Question,
+  QuestionType,
+  Quiz,
+  QuizAnswers,
+  TypedAnswer,
+  TypedQuestion,
+} from "./schema";
+import React from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { MDXClient } from "../mdx";
-import RadioGroup from "./radio";
+import { MultipleChoiceMethods } from "./mcq";
+import { z } from "zod";
+
+export type ResponseViewProps<T extends QuestionType> = {
+  question: TypedQuestion<T>;
+  answer: TypedAnswer<T> | null;
+  onChange: (answer: TypedAnswer<T>) => void;
+};
+
+export type AnswerViewProps<T extends QuestionType> = {
+  question: TypedQuestion<T>;
+  answer: TypedAnswer<T>;
+};
+
+export type QuestionMethods<T extends QuestionType> = {
+  getCorrectAnswer: (question: TypedQuestion<T>) => TypedAnswer<T>;
+  compareAnswers: (a: TypedAnswer<T>, b: TypedAnswer<T>) => boolean;
+  answerSchema: z.ZodSchema<TypedAnswer<T>>;
+
+  ResponseView: React.FC<ResponseViewProps<T>>;
+  AnswerView: React.FC<AnswerViewProps<T>>;
+};
+
+function getMethods(type: QuestionType): QuestionMethods<any> {
+  switch (type) {
+    case QuestionType.MultipleChoice:
+      return MultipleChoiceMethods;
+  }
+
+  throw new Error(`Unknown question type: ${type}`);
+}
 
 export default function QuizView({ content }: PreContent) {
-  const quiz = JSON.parse(content) as Quiz;
+  const quiz = React.useMemo<Quiz>(() => JSON.parse(content), [content]);
   const numQuestions = Object.keys(quiz.questions).length;
 
   const [open, setOpen] = React.useState(false);
@@ -83,19 +121,30 @@ function QuizModal({
   setOpen: (open: boolean) => void;
   quiz: Quiz;
 }) {
-  const [help, setHelp] = React.useState(false);
   const [index, setIndex] = React.useState(0);
+  const answers = React.useRef<QuizAnswers>({ answers: {} });
 
-  const questions = useMemo(() => {
+  const questions = React.useMemo(() => {
     const entries = Object.entries(quiz.questions);
     return entries.sort((a, b) => a[0].localeCompare(b[0]));
   }, []);
 
-  const question = questions[index][1];
+  const [questionKey, question] = questions[index];
 
-  useEffect(() => {
+  const onSubmit = React.useCallback(
+    (answer: Answer) => {
+      answers.current.answers[questionKey] = answer;
+      if (index + 1 < questions.length) setIndex((idx) => idx + 1);
+      else {
+        // Pass answers to parent
+        setOpen(false);
+      }
+    },
+    [index, questions]
+  );
+
+  React.useEffect(() => {
     if (!open) return;
-    setHelp(false);
     setIndex(0);
   }, [open]);
 
@@ -129,30 +178,8 @@ function QuizModal({
             }`}
           >
             <QuestionPrompt question={question} index={index} />
-            <QuestionResponses question={question} />
+            <QuestionResponses question={question} onSubmit={onSubmit} />
           </QuizBox>
-          <Stack
-            width={{ xs: 1, sm: 0.5 }}
-            sx={{ float: "right" }}
-            textAlign="right"
-          >
-            <Typography
-              variant="caption"
-              fontStyle="italic"
-              color="text.secondary"
-              sx={{ cursor: "pointer" }}
-              onClick={() => setHelp((v) => !v)}
-            >
-              Why is this quiz fullscreen?
-            </Typography>
-            {help && (
-              <Typography variant="caption" color="text.secondary">
-                We want to know how much you are learning that can be recalled
-                without assistance. Please complete the quiz without re-reading
-                the text, e.g. by opening it in another tab.
-              </Typography>
-            )}
-          </Stack>
         </Container>
       </Fade>
     </Modal>
@@ -202,32 +229,30 @@ function QuestionPrompt({
   );
 }
 
-function QuestionResponses({ question }: { question: Question }) {
-  const responses = [
-    ...Object.entries(question.answers),
-    ...Object.entries(question.distractors),
-  ].map(([key, value]) => ({
-    key,
-    label: <MDXClient {...value} removeMargin />,
-  }));
-
-  const [answer, setAnswer] = React.useState<string[]>([]);
+function QuestionResponses({
+  question,
+  onSubmit,
+}: {
+  question: Question;
+  onSubmit: (answer: Answer) => void;
+}) {
+  const methods = getMethods(question.type);
+  const [answer, setAnswer] = React.useState<Answer | null>(null);
 
   return (
     <Box>
-      <RadioGroup
-        multiple={Object.keys(question.answers).length > 1}
-        value={answer}
+      <methods.ResponseView
+        question={question}
+        answer={answer}
         onChange={setAnswer}
-        options={responses}
-        sx={{
-          width: "100%",
-          marginBottom: 2,
-          "& .MuiFormControlLabel-label": { width: "100%" },
-        }}
       />
       <Box>
-        <Button variant="outlined" color="inherit">
+        <Button
+          variant="outlined"
+          color="inherit"
+          disabled={!answer || !methods.answerSchema.safeParse(answer).success}
+          onClick={() => onSubmit(answer!)}
+        >
           Submit
         </Button>
       </Box>

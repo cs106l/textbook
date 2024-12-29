@@ -110,7 +110,7 @@ questions:
           std::cout << "hello" << std::endl; 
         }
         ~~~
-      a2: Another answer
+      a2: another answer
     distractors:
       d1: A wrong answer
       d2: Another wrong answer

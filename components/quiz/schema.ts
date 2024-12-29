@@ -7,6 +7,7 @@ import { serializeMDX } from "../mdx";
 
 export enum QuestionType {
   MultipleChoice = "multiple-choice",
+  ShortAnswer = "short-answer",
 }
 
 const MarkdownSchema = z.string().transform(serializeMDX);
@@ -32,16 +33,25 @@ export const QuizSchema = z.object({
   questions: z.record(QuestionSchema),
 });
 
-export type MultipleChoiceQuestion = Quiz & {
-  type: QuestionType.MultipleChoice;
-};
 export type Question = z.infer<typeof QuestionSchema>;
+export type TypedQuestion<T extends QuestionType> = Extract<
+  Question,
+  { type: T }
+>;
 export type Quiz = z.infer<typeof QuizSchema>;
 
-const MultipleChoiceAnswerSchema = z.object({
+export const MultipleChoiceAnswerSchema = z.object({
   type: z.literal(QuestionType.MultipleChoice),
-  answers: z.string().array().nonempty(),
+  keys: z.string().array().min(1),
 });
 
 const AnswerSchema = z.discriminatedUnion("type", [MultipleChoiceAnswerSchema]);
+
+export type TypedAnswer<T extends QuestionType> = Extract<Answer, { type: T }>;
 export type Answer = z.infer<typeof AnswerSchema>;
+
+const QuizAnswers = z.object({
+  answers: z.record(AnswerSchema),
+});
+
+export type QuizAnswers = z.infer<typeof QuizAnswers>;

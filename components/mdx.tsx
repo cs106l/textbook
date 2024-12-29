@@ -161,14 +161,14 @@ export function MDXServer({ source }: MDXServerProps) {
 /* ========================================================================= */
 
 export type MDXClientProps = Awaited<ReturnType<typeof mdxRemoteSerialize>> & {
-  removeMargin?: boolean;
+  noMargin?: boolean;
 };
 
 export function MDXClient(props: MDXClientProps) {
   return (
     <Box
       sx={{
-        ...(props.removeMargin && {
+        ...(props.noMargin && {
           "& > *:last-child": { marginBottom: 0 },
         }),
       }}
