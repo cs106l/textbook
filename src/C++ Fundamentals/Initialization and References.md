@@ -1,8 +1,3 @@
----
-title: Initialization and References
-description: Learn about initializing variables and using references to write efficient and readable C++ code.
----
-
 ## How to initialize objects?
 
 To initialize an object is to provide it values at the time of construction. Everything in C++ has a constructor, which simply assigns it values at the time of the objects creation in a program.
