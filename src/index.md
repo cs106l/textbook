@@ -110,11 +110,18 @@ questions:
           std::cout << "hello" << std::endl; 
         }
         ~~~
-      a2: another answer
+      a2: Another answer
     distractors:
       d1: A wrong answer
       d2: Another wrong answer
       d3: Another wrong answer!!
+  q2: 
+    type: multiple-choice
+    prompt: Another quiz question goes here
+    answers:
+      a1: This is a single answer
+    distractors:
+      a2: This is a single distractor
 ```
 
 A quiz question is uniquely determined by the combination of:

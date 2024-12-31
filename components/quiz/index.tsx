@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Container,
+  Divider,
   Fade,
   Modal,
   Stack,
@@ -22,7 +23,7 @@ import {
   TypedAnswer,
   TypedQuestion,
 } from "./schema";
-import React from "react";
+import React, { useMemo } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { MDXClient } from "../mdx";
 import { MultipleChoiceMethods } from "./mcq";
@@ -62,25 +63,30 @@ export default function QuizView({ content }: PreContent) {
   const numQuestions = Object.keys(quiz.questions).length;
 
   const [open, setOpen] = React.useState(false);
+  const [answers, setAnswers] = React.useState<QuizAnswers | null>(null);
 
   return (
     <QuizBox
       header={
-        <Typography>
-          {numQuestions} question{numQuestions > 1 && "s"}
-        </Typography>
+        answers ? null : (
+          <Typography>
+            {numQuestions} question{numQuestions > 1 && "s"}
+          </Typography>
+        )
       }
     >
-      <Box>
-        <Button
-          variant="outlined"
-          color="inherit"
-          onClick={() => setOpen(true)}
-        >
-          Start
-        </Button>
-      </Box>
-      <QuizModal open={open} setOpen={setOpen} quiz={quiz} />
+      <AnswerReview
+        quiz={quiz}
+        answers={answers}
+        onAttempt={() => setOpen(true)}
+        onGiveUp={(a) => setAnswers({ ...a, gaveUp: true })}
+      />
+      <QuizModal
+        open={open}
+        setOpen={setOpen}
+        quiz={quiz}
+        onComplete={(a) => setAnswers(a)}
+      />
     </QuizBox>
   );
 }
@@ -107,7 +113,7 @@ function QuizBox({
         <Typography variant="h3">Quiz</Typography>
         {header}
       </Stack>
-      <Box>{children}</Box>
+      {children}
     </Stack>
   );
 }
@@ -116,31 +122,28 @@ function QuizModal({
   quiz,
   open,
   setOpen,
+  onComplete,
 }: {
   open: boolean;
   setOpen: (open: boolean) => void;
   quiz: Quiz;
+  onComplete: (answers: QuizAnswers) => void;
 }) {
   const [index, setIndex] = React.useState(0);
   const answers = React.useRef<QuizAnswers>({ answers: {} });
-
-  const questions = React.useMemo(() => {
-    const entries = Object.entries(quiz.questions);
-    return entries.sort((a, b) => a[0].localeCompare(b[0]));
-  }, []);
-
-  const [questionKey, question] = questions[index];
+  const { key, question } = quiz.questions[index];
 
   const onSubmit = React.useCallback(
     (answer: Answer) => {
-      answers.current.answers[questionKey] = answer;
-      if (index + 1 < questions.length) setIndex((idx) => idx + 1);
+      answers.current.answers[key] = answer;
+      if (index + 1 < quiz.questions.length) setIndex((idx) => idx + 1);
       else {
         // Pass answers to parent
         setOpen(false);
+        onComplete(answers.current);
       }
     },
-    [index, questions]
+    [answers, index, quiz]
   );
 
   React.useEffect(() => {
@@ -177,7 +180,7 @@ function QuizModal({
               Object.keys(quiz.questions).length
             }`}
           >
-            <QuestionPrompt question={question} index={index} />
+            <QuestionPrompt question={question} index={index} as="blockquote" />
             <QuestionResponses question={question} onSubmit={onSubmit} />
           </QuizBox>
         </Container>
@@ -215,18 +218,22 @@ function CloseButton({ onClose }: { onClose: () => void }) {
 function QuestionPrompt({
   question,
   index,
+  as,
 }: {
   question: Question;
   index: number;
+  as?: React.HTMLElementType;
 }) {
-  return (
-    <blockquote>
+  const children = (
+    <>
       <Typography variant="h4" mb={1}>
         Question {index + 1}
       </Typography>
-      <MDXClient {...question.prompt} />
-    </blockquote>
+      <MDXClient {...question.prompt} noMargin />
+    </>
   );
+
+  return React.createElement(as ?? "div", {}, children);
 }
 
 function QuestionResponses({
@@ -238,6 +245,9 @@ function QuestionResponses({
 }) {
   const methods = getMethods(question.type);
   const [answer, setAnswer] = React.useState<Answer | null>(null);
+
+  // Reset answers when question changes
+  React.useEffect(() => setAnswer(null), [question]);
 
   return (
     <Box>
@@ -255,6 +265,165 @@ function QuestionResponses({
         >
           Submit
         </Button>
+      </Box>
+    </Box>
+  );
+}
+
+function AnswerReview({
+  quiz,
+  answers,
+  onAttempt,
+  onGiveUp,
+}: {
+  quiz: Quiz;
+  answers: QuizAnswers | null;
+  onAttempt: () => void;
+  onGiveUp: (answers: QuizAnswers) => void;
+}) {
+  if (!answers)
+    return (
+      <Box>
+        <Button variant="outlined" color="inherit" onClick={onAttempt}>
+          Start
+        </Button>
+      </Box>
+    );
+
+  const nCorrect = useMemo(() => {
+    return quiz.questions.filter(({ key, question }) => {
+      const answer: Answer | undefined = answers.answers[key];
+      if (!answer) return false;
+      const methods = getMethods(question.type);
+      const correct = methods.getCorrectAnswer(question);
+      return methods.compareAnswers(answer, correct);
+    }).length;
+  }, [quiz, answers]);
+
+  const nQuestions = Object.keys(quiz.questions).length;
+
+  return (
+    <>
+      <Typography>
+        You answered{" "}
+        <strong>
+          {nCorrect}/{nQuestions}
+        </strong>{" "}
+        questions correctly.
+      </Typography>
+      {!answers.gaveUp && nCorrect !== nQuestions && (
+        <Typography>
+          You can either{" "}
+          <Button
+            variant="outlined"
+            color="inherit"
+            onClick={() => onAttempt()}
+          >
+            retry the quiz
+          </Button>{" "}
+          or{" "}
+          <Button
+            variant="outlined"
+            color="inherit"
+            onClick={() => onGiveUp(answers)}
+          >
+            see the correct answers
+          </Button>
+          .
+        </Typography>
+      )}
+      <Divider />
+      {quiz.questions.map(({ key, question }, index) => (
+        <QuestionReview
+          key={key}
+          index={index}
+          question={question}
+          answer={answers.answers[key]}
+          gaveUp={answers.gaveUp}
+        />
+      ))}
+    </>
+  );
+}
+
+function QuestionReview({
+  index,
+  question,
+  answer,
+  gaveUp,
+}: {
+  index: number;
+  question: Question;
+  answer?: Answer;
+  gaveUp?: boolean;
+}) {
+  const methods = getMethods(question.type);
+  const correct = answer
+    ? methods.compareAnswers(answer, methods.getCorrectAnswer(question))
+    : false;
+
+  const showAnswer = gaveUp && !correct;
+
+  return (
+    <>
+      <QuestionPrompt question={question} index={index} />
+      <Stack direction="row" spacing={1}>
+        {answer && (
+          <ItemReview correct={correct} heading={showAnswer && "You answered"}>
+            <methods.AnswerView question={question} answer={answer} />
+          </ItemReview>
+        )}
+        {showAnswer && (
+          <ItemReview
+            correct={true}
+            heading={showAnswer && "The correct answer is"}
+          >
+            <methods.AnswerView
+              question={question}
+              answer={methods.getCorrectAnswer(question)}
+            />
+          </ItemReview>
+        )}
+      </Stack>
+    </>
+  );
+}
+
+function ItemReview({
+  correct,
+  heading,
+  children,
+}: {
+  correct: boolean;
+  heading?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Box
+      borderRadius="var(--shape-borderRadius)"
+      border="1px solid var(--palette-divider)"
+      padding={2}
+      flex={1}
+      minWidth={0}
+    >
+      {heading && (
+        <Typography variant="h5" mb={1}>
+          {heading}
+        </Typography>
+      )}
+      <Box
+        sx={{
+          "&:before": {
+            content: correct ? '"✓ Correct"' : '"✗ Incorrect"',
+            color: correct
+              ? "var(--palette-success-main)"
+              : "var(--palette-error-main)",
+            marginRight: "1rem",
+          },
+        }}
+        component="span"
+      >
+        {children}
       </Box>
     </Box>
   );

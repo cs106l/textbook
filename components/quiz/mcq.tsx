@@ -62,8 +62,33 @@ function ResponseView({
   );
 }
 
-function AnswerView({}: AnswerViewProps<QuestionType.MultipleChoice>) {
-  return null;
+function AnswerView({
+  question,
+  answer,
+}: AnswerViewProps<QuestionType.MultipleChoice>) {
+  const answerMarkdown = answer.keys
+    .map((key) => {
+      const source = question.answers[key] ?? question.distractors[key];
+      if (!source) return null;
+      return {
+        key,
+        content: <MDXClient {...source} noMargin />,
+      };
+    })
+    .filter((kv) => kv !== null);
+
+  if (answerMarkdown.length === 0) return null;
+  if (Object.keys(question.answers).length <= 1)
+    return answerMarkdown[0].content;
+  return (
+    <ul style={{ paddingInlineStart: "1rem", margin: 0 }}>
+      {answerMarkdown.map((kv) => (
+        <li key={kv.key} style={{ marginTop: "0.5rem" }}>
+          {kv?.content}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /* ========================================================================= */
