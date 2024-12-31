@@ -1,3 +1,8 @@
+---
+title: Initialization and References
+description: How to construct and refer to instances of objects in memory.
+---
+
 ## How to initialize objects?
 
 To initialize an object is to provide it values at the time of construction. Everything in C++ has a constructor, which simply assigns it values at the time of the objects creation in a program.

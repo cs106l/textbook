@@ -60,7 +60,9 @@ function Header() {
 function StickyBlock(props: BoxProps) {
   return (
     <Box
-      width={300}
+      width={250}
+      flexShrink={0}
+      flexGrow={0}
       height={`calc(100vh - ${NavOffset})`}
       top={NavOffset}
       position="sticky"

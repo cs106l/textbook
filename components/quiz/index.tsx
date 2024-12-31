@@ -403,8 +403,8 @@ function ItemReview({
       borderRadius="var(--shape-borderRadius)"
       border="1px solid var(--palette-divider)"
       padding={2}
+      width={0}
       flex={1}
-      minWidth={0}
     >
       {heading && (
         <Typography variant="h5" mb={1}>
