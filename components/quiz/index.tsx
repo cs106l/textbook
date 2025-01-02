@@ -23,11 +23,12 @@ import {
   TypedAnswer,
   TypedQuestion,
 } from "./schema";
-import React, { useMemo } from "react";
+import React from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { MDXClient } from "../mdx";
 import { MultipleChoiceMethods } from "./mcq";
 import { z } from "zod";
+import useStoredAnswers from "./storage";
 
 export type ResponseViewProps<T extends QuestionType> = {
   question: TypedQuestion<T>;
@@ -49,6 +50,7 @@ export type QuestionMethods<T extends QuestionType> = {
   AnswerView: React.FC<AnswerViewProps<T>>;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getMethods(type: QuestionType): QuestionMethods<any> {
   switch (type) {
     case QuestionType.MultipleChoice:
@@ -63,7 +65,7 @@ export default function QuizView({ content }: PreContent) {
   const numQuestions = Object.keys(quiz.questions).length;
 
   const [open, setOpen] = React.useState(false);
-  const [answers, setAnswers] = React.useState<QuizAnswers | null>(null);
+  const [answers, setAnswers] = useStoredAnswers(quiz);
 
   return (
     <QuizBox
@@ -83,7 +85,7 @@ export default function QuizView({ content }: PreContent) {
       />
       <QuizModal
         open={open}
-        setOpen={setOpen}
+        onClose={() => setOpen(false)}
         quiz={quiz}
         onComplete={(a) => setAnswers(a)}
       />
@@ -121,11 +123,11 @@ function QuizBox({
 function QuizModal({
   quiz,
   open,
-  setOpen,
+  onClose,
   onComplete,
 }: {
   open: boolean;
-  setOpen: (open: boolean) => void;
+  onClose: () => void;
   quiz: Quiz;
   onComplete: (answers: QuizAnswers) => void;
 }) {
@@ -138,17 +140,17 @@ function QuizModal({
       answers.current.answers[key] = answer;
       if (index + 1 < quiz.questions.length) setIndex((idx) => idx + 1);
       else {
-        // Pass answers to parent
-        setOpen(false);
+        onClose();
         onComplete(answers.current);
       }
     },
-    [answers, index, quiz]
+    [answers, index, quiz, key, onClose, onComplete]
   );
 
   React.useEffect(() => {
     if (!open) return;
     setIndex(0);
+    answers.current = { answers: {} };
   }, [open]);
 
   return (
@@ -174,11 +176,12 @@ function QuizModal({
             transition: "all 0.3s",
           }}
         >
-          <CloseButton onClose={() => setOpen(false)} />
+          <CloseButton onClose={onClose} />
           <QuizBox
             header={`Question ${index + 1}/${
               Object.keys(quiz.questions).length
             }`}
+            sx={{ backgroundColor: "var(--palette-background-header)" }}
           >
             <QuestionPrompt question={question} index={index} as="blockquote" />
             <QuestionResponses question={question} onSubmit={onSubmit} />
@@ -281,16 +284,8 @@ function AnswerReview({
   onAttempt: () => void;
   onGiveUp: (answers: QuizAnswers) => void;
 }) {
-  if (!answers)
-    return (
-      <Box>
-        <Button variant="outlined" color="inherit" onClick={onAttempt}>
-          Start
-        </Button>
-      </Box>
-    );
-
-  const nCorrect = useMemo(() => {
+  const nCorrect = React.useMemo(() => {
+    if (!answers) return 0;
     return quiz.questions.filter(({ key, question }) => {
       const answer: Answer | undefined = answers.answers[key];
       if (!answer) return false;
@@ -301,6 +296,15 @@ function AnswerReview({
   }, [quiz, answers]);
 
   const nQuestions = Object.keys(quiz.questions).length;
+
+  if (!answers)
+    return (
+      <Box>
+        <Button variant="outlined" color="inherit" onClick={onAttempt}>
+          Start
+        </Button>
+      </Box>
+    );
 
   return (
     <>
