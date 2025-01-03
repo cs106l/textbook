@@ -371,7 +371,7 @@ function QuestionReview({
   return (
     <>
       <QuestionPrompt question={question} index={index} />
-      <Stack direction="row" spacing={1}>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
         {answer && (
           <ItemReview correct={correct} heading={showAnswer && "You answered"}>
             <methods.AnswerView question={question} answer={answer} />
@@ -407,7 +407,7 @@ function ItemReview({
       borderRadius="var(--shape-borderRadius)"
       border="1px solid var(--palette-divider)"
       padding={2}
-      width={0}
+      width={{ xs: 1, sm: 0 }}
       flex={1}
     >
       {heading && (
