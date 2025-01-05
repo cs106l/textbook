@@ -13,7 +13,7 @@ import { getOptions } from "../pre";
 import YAML from "yaml";
 import { Quiz, QuizSchema } from "./schema";
 
-const remarkQuiz: Plugin = () => {
+const remarkQuiz: Plugin = (pagePath?: string) => {
   return async (tree: Node, file: VFile) => {
     const quizNodes: Code[] = [];
 
@@ -24,7 +24,14 @@ const remarkQuiz: Plugin = () => {
     });
 
     const quizzes: Quiz[] = [];
+    const names = new Set<string>();
+
     for (const node of quizNodes) {
+      if (pagePath === undefined)
+        throw new Error(
+          "It looks like you nested a quiz inside of another quiz. Don't do that!"
+        );
+
       const content = node.value;
       const raw = YAML.parse(content);
 
@@ -39,8 +46,15 @@ const remarkQuiz: Plugin = () => {
         );
 
       const quiz = result.data;
+      quiz.page = pagePath;
       quizzes.push(quiz);
       node.value = JSON.stringify(quiz);
+
+      if (names.has(quiz.quiz))
+        throw new Error(
+          `Quiz name "${quiz.quiz}" is already in use in the same file.`
+        );
+      names.add(quiz.quiz);
     }
 
     file.data.quizzes = quizzes;

@@ -11,7 +11,7 @@ type StoredAnswers = z.infer<typeof StoredAnswersSchema>;
 export default function useStoredAnswers(
   quiz: Quiz
 ): [QuizAnswers | null, (answers: QuizAnswers) => void] {
-  const key = `quiz:${quiz.quiz}`;
+  const key = `quiz:${quiz.page}#${quiz.quiz}`;
   const [answers, setAnswers] = React.useState<QuizAnswers | null>(null);
 
   /* Load answers from local storage on mount */

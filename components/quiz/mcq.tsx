@@ -11,6 +11,8 @@ import { MultipleChoiceAnswerSchema, QuestionType } from "./schema";
 import { MDXClient } from "../mdx";
 import { AnswerViewProps, QuestionMethods, ResponseViewProps } from ".";
 
+import { shuffle } from "lodash";
+
 export const MultipleChoiceMethods: QuestionMethods<QuestionType.MultipleChoice> =
   {
     ResponseView,
@@ -36,17 +38,18 @@ function ResponseView({
   answer,
   onChange,
 }: ResponseViewProps<QuestionType.MultipleChoice>) {
-  const responses = React.useMemo(
-    () =>
-      [
-        ...Object.entries(question.answers),
-        ...Object.entries(question.distractors),
-      ].map(([key, value]) => ({
-        key,
-        label: <MDXClient {...value} noMargin />,
-      })),
-    [question]
-  );
+  const responses = React.useMemo(() => {
+    const responses = [
+      ...Object.entries(question.answers),
+      ...Object.entries(question.distractors),
+    ].map(([key, value]) => ({
+      key,
+      label: <MDXClient {...value} noMargin />,
+    }));
+
+    if (!question.sort) return shuffle(responses);
+    return responses.sort((a, b) => a.key.localeCompare(b.key));
+  }, [question]);
 
   return (
     <RadioGroup

@@ -21,6 +21,7 @@
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.0",
     "katex": "^0.16.15",
+    "lodash": "^4.17.21",
     "next": "15.1.0",
     "next-mdx-remote": "^5.0.0",
     "object-hash": "^3.0.0",
@@ -39,6 +40,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@types/diff": "^6.0.0",
+    "@types/lodash": "^4.17.14",
     "@types/node": "^20",
     "@types/object-hash": "^3.0.6",
     "@types/react": "^19",

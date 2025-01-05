@@ -11,23 +11,45 @@ export enum QuestionType {
   ShortAnswer = "short-answer",
 }
 
-export const MarkdownSchema = z.string().transform(serializeMDX);
+export const MarkdownSchema = z.string().transform((md) => serializeMDX(md));
 
 export const QuestionBaseSchema = z.object({
   prompt: MarkdownSchema,
   context: MarkdownSchema.optional(),
 });
 
-export const MultipleChoiceResponses = z.record(MarkdownSchema);
+export const MultipleChoiceResponses = z.record(MarkdownSchema).refine((v) => {
+  if (Object.keys(v).length === 0)
+    return "At least one answer/distractor is required.";
+  return true;
+});
+
 export const MultipleChoiceSchema = z.object({
   type: z.literal(QuestionType.MultipleChoice),
+
+  /**
+   * If true, responses are shown in sorted order by key.
+   * Otherwise, responses are randomly displayed.
+   */
+  sort: z.boolean().optional(),
   answers: MultipleChoiceResponses,
   distractors: MultipleChoiceResponses,
 });
 
 export const QuestionSchema = z
   .discriminatedUnion("type", [MultipleChoiceSchema])
-  .and(QuestionBaseSchema);
+  .and(QuestionBaseSchema)
+  .refine((v) => {
+    // Note: We can't put refinements like these on the
+    // individual schemas due to a limitation in zod
+    if (v.type === QuestionType.MultipleChoice) {
+      const answers = new Set(Object.keys(v.answers));
+      const distractors = new Set(Object.keys(v.distractors));
+      if (!answers.isDisjointFrom(distractors))
+        return "Multiple choice question cannot have answers and distractors with the same key.";
+    }
+    return true;
+  });
 
 export const QuizSchema = injectHash(
   z.object({
@@ -37,6 +59,9 @@ export const QuizSchema = injectHash(
   })
 ).transform(({ questions, ...rest }) => ({
   ...rest,
+  // This is the page that the quiz is on and will be updated by the remark plugin
+  page: "",
+  // This converts the questions from an object to an array
   questions: Object.entries(questions)
     .sort(([k1], [k2]) => k1.localeCompare(k2))
     .map(([key, question]) => ({

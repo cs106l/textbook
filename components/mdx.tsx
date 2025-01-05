@@ -91,7 +91,7 @@ function heading(props?: TypographyProps) {
   });
 }
 
-export const components: Readonly<MDXComponents> = {
+const components: Readonly<MDXComponents> = {
   h1: heading({ variant: "h1" }),
   h2: heading({ variant: "h2" }),
   h3: heading({ variant: "h3" }),
@@ -128,30 +128,37 @@ export const components: Readonly<MDXComponents> = {
   },
 };
 
-export const options: Readonly<SerializeOptions> = {
-  mdxOptions: {
-    remarkPlugins: [remarkGfm, remarkMath, remarkQuiz],
-    rehypePlugins: [
-      rehypeKatex,
-      rehypeSlug,
-      [rehypeAutolinkHeadings, { behavior: "wrap" }],
-    ],
-  },
-  parseFrontmatter: true,
+type RenderOptions = {
+  path?: string;
 };
+
+function getOptions(options: RenderOptions): SerializeOptions {
+  return {
+    mdxOptions: {
+      remarkPlugins: [remarkGfm, remarkMath, [remarkQuiz, options.path]],
+      rehypePlugins: [
+        rehypeKatex,
+        rehypeSlug,
+        [rehypeAutolinkHeadings, { behavior: "wrap" }],
+      ],
+    },
+    parseFrontmatter: true,
+  };
+}
 
 /* ========================================================================= */
 /* Server-side rendering                                                     */
 /* ========================================================================= */
 
-export type MDXServerProps = Pick<MDXRemoteServerProps, "source">;
+export type MDXServerProps = Pick<MDXRemoteServerProps, "source"> &
+  RenderOptions;
 
-export function MDXServer({ source }: MDXServerProps) {
+export function MDXServer(props: MDXServerProps) {
   return (
     <MDXRemoteServer
-      source={source}
+      source={props.source}
       components={components}
-      options={options}
+      options={getOptions(props)}
     />
   );
 }
@@ -178,6 +185,6 @@ export function MDXClient(props: MDXClientProps) {
   );
 }
 
-export function serializeMDX(source: string) {
-  return mdxRemoteSerialize(source, options);
+export function serializeMDX(source: string, options?: RenderOptions) {
+  return mdxRemoteSerialize(source, getOptions(options ?? {}));
 }

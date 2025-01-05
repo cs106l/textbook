@@ -31,6 +31,12 @@ export type NodeMetadata = Omit<z.infer<typeof MetadataSchema>, "nav_title"> & {
 
   /** Title as it appears in the navigation. */
   nav_title: string;
+
+  /**
+   * The path to the page as it appears in the browser.
+   * Can be considered a unique identifier for the page.
+   */
+  path: string;
 };
 
 const MarkdownExtensions = [".md", ".mdx"];
@@ -45,7 +51,7 @@ const MetadataSchema = z.object({
 });
 
 async function build(): Promise<Book> {
-  const node = await buildNode("src");
+  const node = await buildNode("src", []);
 
   // The returned book applies a transformation on the node tree.
   // It adds an index page to the children array of the root node
@@ -63,7 +69,10 @@ async function build(): Promise<Book> {
 
 export const buildBook = cache(build);
 
-async function buildNode(nodePath: string): Promise<BookNode> {
+async function buildNode(
+  nodePath: string,
+  stack: BookNode[]
+): Promise<BookNode> {
   if (!fs.existsSync(nodePath))
     throw new Error(`Couldn't build book. Path not found: ${nodePath}`);
 
@@ -156,10 +165,19 @@ async function buildNode(nodePath: string): Promise<BookNode> {
       ].join("\n")
     );
 
+  const browserPath = path.join(
+    `/${stack
+      .slice(1)
+      .map((node) => node.route)
+      .join("/")}`,
+    stack.length > 0 ? route : ""
+  );
+
   const meta: NodeMetadata = {
     ...result.data,
     nodePath,
     contentPath,
+    path: browserPath,
     nav_title: result.data.nav_title ?? result.data.title,
   };
 
@@ -167,8 +185,13 @@ async function buildNode(nodePath: string): Promise<BookNode> {
     route,
     meta,
     content: <Page meta={meta} source={content} />,
-    children: await Promise.all(childPaths.map(buildNode)),
+    children: [],
   };
+
+  const children = await Promise.all(
+    childPaths.map((p) => buildNode(p, [...stack, node]))
+  );
+  node.children = children;
 
   // Verify that there are no duplicate slugs in the children
   const slugMap: { [route: string]: string } = {};
@@ -196,7 +219,7 @@ function Page({
       <Typography variant="h1" mb={1} pt={1}>
         {meta.title}
       </Typography>
-      <MDXServer {...rest} />
+      <MDXServer {...rest} path={meta.path} />
     </>
   );
 }
