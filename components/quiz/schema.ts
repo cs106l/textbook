@@ -43,10 +43,13 @@ export const QuestionSchema = z
     // Note: We can't put refinements like these on the
     // individual schemas due to a limitation in zod
     if (v.type === QuestionType.MultipleChoice) {
-      const answers = new Set(Object.keys(v.answers));
-      const distractors = new Set(Object.keys(v.distractors));
-      if (!answers.isDisjointFrom(distractors))
-        return "Multiple choice question cannot have answers and distractors with the same key.";
+      const answers = Object.keys(v.answers);
+      const distractors = Object.keys(v.distractors);
+      const common = answers.filter((key) => distractors.includes(key));
+      if (common.length > 0)
+        return `Multiple choice question cannot have answers and distractors with the same key: ${common.join(
+          ", "
+        )}.`;
     }
     return true;
   });
