@@ -69,7 +69,7 @@ const NavItem = forwardRef(function CustomTreeItem(
         </Link>
       );
     return innerContents;
-  }, [disabled, href]);
+  }, [getCheckboxProps, getContentProps, getIconContainerProps, getLabelProps, status, disabled, href]);
 
   return (
     <TreeItem2Provider itemId={itemId}>

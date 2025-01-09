@@ -2,7 +2,7 @@
 
 import { SimpleTreeView } from "@mui/x-tree-view";
 import NavItem from "./item";
-import { usePathname } from "next/navigation";
+import { usePathname as useNextPathname } from "next/navigation";
 import React from "react";
 import { Typography } from "@mui/material";
 
@@ -34,6 +34,15 @@ function getExpandedItems(node: ClientTreeNode, path: string): string[] {
 
 function getAllExpandedItems(nodes: ClientTreeNode[], path: string): string[] {
     return nodes.flatMap(node => getExpandedItems(node, path));
+}
+
+function usePathname(): string {
+    let pathname = useNextPathname();
+    if (pathname && process?.env?.NEXT_PUBLIC_BASE_PATH && pathname.startsWith(process.env.NEXT_PUBLIC_BASE_PATH)) {
+        pathname = pathname.substring(process.env.NEXT_PUBLIC_BASE_PATH.length);
+        return pathname === '' ? '/' : pathname;
+    }
+    return pathname;
 }
 
 export default function ClientTree({ nodes }: { nodes: ClientTreeNode[] }) {
