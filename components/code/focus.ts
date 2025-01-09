@@ -74,7 +74,7 @@ export default function useFocus(
   onChange: (newCode: string, isFocused: boolean) => void;
 } {
   const initialFocus = React.useMemo<FocusAwareCode>(() => {
-    const lines = initialCode.split("\n");
+    const lines = initialCode.split(/\r?\n/);
     const start = lines.indexOf(anchor);
     const end = lines.lastIndexOf(anchor);
 
@@ -106,7 +106,7 @@ export default function useFocus(
     (code: string, isFocused: boolean) => {
       if (!focus.hasFocus) return setFocus({ hasFocus: false, code });
 
-      const lines = code.split("\n");
+      const lines = code.split(/\r?\n/);
       if (isFocused) {
         const before = focus.lines.slice(0, focus.start);
         const after = focus.lines.slice(focus.start + focus.length);

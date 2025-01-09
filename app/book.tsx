@@ -17,12 +17,13 @@ export type BookNode = {
   children: BookNode[];
 };
 
-export type NodeMetadata = Omit<z.infer<typeof MetadataSchema>, "nav_title"> & {
+export type NodeMetadata = Omit<z.infer<typeof MetadataSchema>, "nav_title" | "hidden"> & {
   /**
    * Path to the directory or file representing this node.
    * This is relative to the project root.
    */
   nodePath: string;
+
   /**
    * Path to the markdown file representing this node.
    * This is relative to the project root.
@@ -37,6 +38,11 @@ export type NodeMetadata = Omit<z.infer<typeof MetadataSchema>, "nav_title"> & {
    * Can be considered a unique identifier for the page.
    */
   path: string;
+
+  /**
+   * Whether the page should be hidden from the navigation.
+   */
+  hidden: boolean;
 };
 
 const MarkdownExtensions = [".md", ".mdx"];
@@ -48,6 +54,8 @@ const MetadataSchema = z.object({
   description: z.string(),
   /** Title as it appears in the navigation. If not provided, title is used instead. */
   nav_title: z.string().optional(),
+  /** Whether the page should be hidden from the navigation. */
+  hidden: z.boolean().optional(),
 });
 
 async function build(): Promise<Book> {
@@ -171,7 +179,7 @@ async function buildNode(
       .map((node) => node.route)
       .join("/")}`,
     stack.length > 0 ? route : ""
-  );
+  ).replaceAll(path.sep, "/");
 
   const meta: NodeMetadata = {
     ...result.data,
@@ -179,6 +187,7 @@ async function buildNode(
     contentPath,
     path: browserPath,
     nav_title: result.data.nav_title ?? result.data.title,
+    hidden: result.data.hidden ?? false,
   };
 
   const node: BookNode = {
@@ -198,8 +207,7 @@ async function buildNode(
   for (const child of node.children) {
     if (slugMap[child.route])
       throw new Error(
-        `Couldn't build book. Two pages have the same slug (${child.route}): ${
-          slugMap[child.route]
+        `Couldn't build book. Two pages have the same slug (${child.route}): ${slugMap[child.route]
         } and ${child.meta.nodePath}`
       );
     slugMap[child.route] = child.meta.nodePath;
