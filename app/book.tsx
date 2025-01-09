@@ -130,7 +130,7 @@ async function buildNode(
   //  01-Introduction     -> Introduction
   //  02a-Getting-Started -> Getting-Started
   //  02b--Installation   -> Installation
-  route = route.replace(/^\d+.*-+/, "");
+  route = route.replace(/^\d+.*?-+/, "");
 
   // Routes must be alphanumeric with dashes to make routing intuitive.
   // Whitespace and underscores are replaced by dashes.
