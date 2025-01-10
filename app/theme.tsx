@@ -75,6 +75,9 @@ const theme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: (theme) => ({
+        html: {
+          overflowY: "scroll"
+        },
         body: {
           backgroundColor: "var(--palette-common-background)",
           color: "var(--palette-common-onBackground)",
