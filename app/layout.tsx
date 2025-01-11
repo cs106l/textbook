@@ -86,7 +86,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <StickyBlock display={{ xs: "none", md: "block" }}>
                   <ChapterTree />
                 </StickyBlock>
-                <Box flexGrow={1}>
+                <Box flexGrow={1} marginBottom={4}>
                   <Container maxWidth="md" sx={{ padding: 0 }}>
                     {children}
                   </Container>

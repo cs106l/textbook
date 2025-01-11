@@ -17,7 +17,10 @@ export type BookNode = {
   children: BookNode[];
 };
 
-export type NodeMetadata = Omit<z.infer<typeof MetadataSchema>, "nav_title" | "hidden"> & {
+export type NodeMetadata = Omit<
+  z.infer<typeof MetadataSchema>,
+  "nav_title" | "hidden"
+> & {
   /**
    * Path to the directory or file representing this node.
    * This is relative to the project root.
@@ -43,6 +46,16 @@ export type NodeMetadata = Omit<z.infer<typeof MetadataSchema>, "nav_title" | "h
    * Whether the page should be hidden from the navigation.
    */
   hidden: boolean;
+
+  /**
+   * The previous page in sequence, if any.
+   */
+  prev: BookNode | null;
+
+  /**
+   * The next page in sequence, if any.
+   */
+  next: BookNode | null;
 };
 
 const MarkdownExtensions = [".md", ".mdx"];
@@ -71,6 +84,27 @@ async function build(): Promise<Book> {
     route: "",
     children: [],
   });
+
+  // Populate the previous/next pages of each node recursively.
+  // The previous/next correspond to an pre-order traversal of the nodes,
+  // e.g. read the current page, then try reading all the pages of the first child, etc.
+
+  let prev: BookNode | null = null;
+  function setPrevNext(node: BookNode[] | BookNode) {
+    if (prev) {
+      if (!Array.isArray(node)) {
+        prev.meta.next = node;
+        node.meta.prev = prev;
+      }
+    }
+
+    if (!Array.isArray(node)) prev = node;
+
+    for (const child of Array.isArray(node) ? node : node.children)
+      if (!child.meta.hidden) setPrevNext(child);
+  }
+
+  setPrevNext(nodes);
 
   return nodes;
 }
@@ -173,13 +207,15 @@ async function buildNode(
       ].join("\n")
     );
 
-  const browserPath = path.join(
-    `/${stack
-      .slice(1)
-      .map((node) => node.route)
-      .join("/")}`,
-    stack.length > 0 ? route : ""
-  ).replaceAll(path.sep, "/");
+  const browserPath = path
+    .join(
+      `/${stack
+        .slice(1)
+        .map((node) => node.route)
+        .join("/")}`,
+      stack.length > 0 ? route : ""
+    )
+    .replaceAll(path.sep, "/");
 
   const meta: NodeMetadata = {
     ...result.data,
@@ -188,6 +224,10 @@ async function buildNode(
     path: browserPath,
     nav_title: result.data.nav_title ?? result.data.title,
     hidden: result.data.hidden ?? false,
+
+    // Set these to null now, we will populate them once the tree is constructed
+    prev: null,
+    next: null,
   };
 
   const node: BookNode = {
@@ -207,7 +247,8 @@ async function buildNode(
   for (const child of node.children) {
     if (slugMap[child.route])
       throw new Error(
-        `Couldn't build book. Two pages have the same slug (${child.route}): ${slugMap[child.route]
+        `Couldn't build book. Two pages have the same slug (${child.route}): ${
+          slugMap[child.route]
         } and ${child.meta.nodePath}`
       );
     slugMap[child.route] = child.meta.nodePath;
@@ -216,6 +257,11 @@ async function buildNode(
   return node;
 }
 
+/**
+ * The page content. For guidelines on what should go into the page content,
+ * this should be everything that would be hypothetically printed out if the
+ * page were to be printed or saved to a PDF.
+ */
 function Page({
   meta,
   ...rest
@@ -226,6 +272,9 @@ function Page({
     <>
       <Typography variant="h1" mb={1} pt={1}>
         {meta.title}
+      </Typography>
+      <Typography variant="body1" color="textSecondary" mb={1}>
+        {meta.description}
       </Typography>
       <MDXServer {...rest} path={meta.path} />
     </>
