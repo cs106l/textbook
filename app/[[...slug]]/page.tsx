@@ -1,13 +1,7 @@
 import { Book, BookNode, buildBook } from "../book";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import {
-  Grid2,
-  Grid2Props,
-  Link,
-  SvgIcon,
-  Typography,
-} from "@mui/material";
+import { Grid2, Grid2Props, Link, SvgIcon, Typography } from "@mui/material";
 
 import { ChevronLeftIcon } from "@heroicons/react/16/solid";
 import { ChevronRightIcon } from "@heroicons/react/16/solid";
@@ -80,6 +74,7 @@ function ChildPages({ pages, ...rest }: Grid2Props & { pages: BookNode[] }) {
     <Grid2 container spacing={2} {...rest}>
       {pages.map((page) => (
         <CardLink
+          key={page.route}
           href={page.meta.path}
           sx={{
             "&:hover h4": {

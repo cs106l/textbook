@@ -1,4 +1,10 @@
 import { Box, Button, Link, Stack, Typography } from "@mui/material";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "404: This page could not be found",
+  description: "Page not found",
+};
 
 export default function NotFound() {
   return (
@@ -13,7 +19,9 @@ export default function NotFound() {
         404
       </Typography>
       <Typography color="textSecondary">Page not found :(</Typography>
-      <Typography>Oops! The page you're looking for doesn't exist.</Typography>
+      <Typography>
+        Oops! The page you&apos;re looking for doesn&apos;t exist.
+      </Typography>
       <Box>
         <Button
           component={Link}
