@@ -137,9 +137,7 @@ const components: Readonly<MDXComponents> = {
         {fn && "]"}
       </Link>
     );
-  },
-
-  bro: (props) => <span>Bro</span>
+  }
 };
 
 type RenderOptions = {

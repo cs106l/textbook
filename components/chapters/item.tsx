@@ -73,7 +73,7 @@ const NavItem = forwardRef(function CustomTreeItem(
 
   return (
     <TreeItem2Provider itemId={itemId}>
-      <TreeItem2Root {...getRootProps(other)} sx={{ paddingBottom: 0.5 }}>
+      <TreeItem2Root {...getRootProps(other)}>
         {linkedContents}
         {children && (
           <TreeItem2GroupTransition {...getGroupTransitionProps()} />

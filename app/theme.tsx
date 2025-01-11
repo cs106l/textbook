@@ -71,6 +71,10 @@ const theme = createTheme({
     h4: heading(1),
     h5: heading(0.875),
     h6: heading(0.85),
+    allVariants: {
+      letterSpacing: "0.025em",
+      lineHeight: "1.75"
+    }
   },
   components: {
     MuiCssBaseline: {
@@ -81,7 +85,7 @@ const theme = createTheme({
         body: {
           backgroundColor: "var(--palette-common-background)",
           color: "var(--palette-common-onBackground)",
-          overscrollBehavior: "none",
+          overscrollBehavior: "none"
         },
         code: {
           fontFamily: monospace.style.fontFamily,
