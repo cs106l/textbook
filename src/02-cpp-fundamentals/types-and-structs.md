@@ -5,7 +5,7 @@ description: Introduces the C++ type system, and how to construct your own types
 
 ## The Type System
 
-The **type** of a variable in C++ is the "category" of that variable, or in other words the kind of object that variable represents. C++ comes with many built-in types, such as `int`, `double`, `bool`, `std::string`, to name a few. C++ enforces the appropriate use of variable types through its **type system**. In particular, C++ is a *statically typed language*, meaning that:
+The **type** of a variable in C++ is the "category" of that variable, or in other words the kind of object that variable represents. C++ comes with many built-in types, such as `int`, `double`, `bool`, `std::string`, to name a few. C++ enforces the appropriate use of variable types through its **type system**. In particular, C++ is a <abbr title="A statically typed language enforces type checking at compile time.">statically typed language</abbr>, meaning that:
 
 * every variable must declare a type in the source code
 * that type can't change after it's been declared.
@@ -26,7 +26,7 @@ Notice that each variable (`a`, `b`, `d`), parameter (`c`), and function return 
 
 > `void` is a special type indicating that a function has no return type. 
 
-Compare this code to its equivalent in Python, a *dynamically typed language*:
+Compare this code to its equivalent in Python, a <abbr title="A dynamically typed language enforces type checking at runtime.">dynamically typed language</abbr>:
 
 ```python
 a = 3

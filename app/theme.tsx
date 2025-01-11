@@ -4,10 +4,10 @@ import { alpha, createTheme } from "@mui/material/styles";
 import { TypographyStyleOptions } from "@mui/material/styles/createTypography";
 import NextLink, { LinkProps as NextLinkProps } from "next/link";
 
-import { IBM_Plex_Mono, Roboto } from "next/font/google";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import React from "react";
 
-export const font = Roboto({
+export const font = Space_Grotesk({
   weight: ["300", "400", "500", "700"],
   subsets: ["latin-ext"],
 });

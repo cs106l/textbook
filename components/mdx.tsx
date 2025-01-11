@@ -60,7 +60,9 @@ function heading(props?: TypographyProps) {
   return typography({
     marginBottom: "1rem",
     paddingTop: "1rem",
+    ...props,
     sx: {
+      ...props?.sx,
       position: "relative",
       scrollMarginTop: "4rem",
       "& > a": {
@@ -87,13 +89,23 @@ function heading(props?: TypographyProps) {
         opacity: 1,
       },
     },
+  });
+}
+
+function ruleHeading(props?: TypographyProps) {
+  return heading({
     ...props,
+    sx: {
+      ...props?.sx,
+      paddingBottom: "0.5rem",
+      borderBottom: "1px solid var(--palette-divider)",
+    },
   });
 }
 
 const components: Readonly<MDXComponents> = {
-  h1: heading({ variant: "h1" }),
-  h2: heading({ variant: "h2" }),
+  h1: ruleHeading({ variant: "h1" }),
+  h2: ruleHeading({ variant: "h2" }),
   h3: heading({ variant: "h3" }),
   h4: heading({ variant: "h4" }),
   h5: heading({ variant: "h5" }),
@@ -126,6 +138,8 @@ const components: Readonly<MDXComponents> = {
       </Link>
     );
   },
+
+  bro: (props) => <span>Bro</span>
 };
 
 type RenderOptions = {
