@@ -7,12 +7,20 @@ import { Typography } from "@mui/material";
 
 import "katex/dist/katex.min.css";
 import { cache } from "react";
+import compileTOC, { type TOCNode } from "@/components/toc/compile";
 
 export type Book = BookNode[];
 
+/**
+ * Represents a single page in the book.
+ *
+ * Note: This __cannot__ be sent to the client. Besides being a circular data structure,
+ * it contains a huge amount of data. Consider taking portions of the data and sending that.
+ */
 export type BookNode = {
   route: string;
   meta: NodeMetadata;
+  toc: TOCNode;
   content: React.ReactNode;
   children: BookNode[];
 };
@@ -187,8 +195,8 @@ async function buildNode(
     throw new Error(`Couldn't build book. ${nodePath} produced empty route.`);
 
   // Parse frontmatter metadata from the markdown file
-  const content = fs.readFileSync(contentPath);
-  const { data } = matter(content);
+  const rawContent = fs.readFileSync(contentPath);
+  const { data, content } = matter(rawContent);
   const result = MetadataSchema.safeParse(data);
   if (!result.success)
     throw new Error(
@@ -233,7 +241,8 @@ async function buildNode(
   const node: BookNode = {
     route,
     meta,
-    content: <Page meta={meta} source={content} />,
+    toc: await compileTOC(content),
+    content: <Page meta={meta} source={rawContent} />,
     children: [],
   };
 

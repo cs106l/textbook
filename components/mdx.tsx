@@ -137,14 +137,14 @@ const components: Readonly<MDXComponents> = {
         {fn && "]"}
       </Link>
     );
-  }
+  },
 };
 
 type RenderOptions = {
   path?: string;
 };
 
-function getOptions(options: RenderOptions): SerializeOptions {
+export function getMDXOptions(options: RenderOptions): SerializeOptions {
   return {
     mdxOptions: {
       remarkPlugins: [remarkGfm, remarkMath, [remarkQuiz, options.path]],
@@ -170,7 +170,7 @@ export function MDXServer(props: MDXServerProps) {
     <MDXRemoteServer
       source={props.source}
       components={components}
-      options={getOptions(props)}
+      options={getMDXOptions(props)}
     />
   );
 }
@@ -198,5 +198,5 @@ export function MDXClient(props: MDXClientProps) {
 }
 
 export function serializeMDX(source: string, options?: RenderOptions) {
-  return mdxRemoteSerialize(source, getOptions(options ?? {}));
+  return mdxRemoteSerialize(source, getMDXOptions(options ?? {}));
 }
