@@ -130,6 +130,53 @@ int main() {
 
 - Overloading conflicts with uniform initialization
 
+## Structured Binding (C++17)
+
+Structured binding is a method of initializing variables from data structures with size known at compile-time. For example:
+
+```cpp,runnable
+std::tuple<std::string, std::string, std::string> getClassInfo() {
+    std::string className = "CS106L";
+    std::string location = "online";
+    std::string language = "C++";
+    return {className, location, language};
+}
+int main() {
+    `[auto [className, location, language] = getClassInfo();]`
+    std::cout << "Join us " << location << " for " << className << " to learn " << language << "!" << std::endl;
+    return 0;
+}
+```
+
+In the above example, we're introducing the `std::tuple<Class ...>` data structure. At compile time, the size of the tuple is known so we can unpack the values in the tuple into variables, as we can see in the highlighted code above.
+
+The syntax for structured binding is:
+
+```cpp,runnable
+auto [var1, var2, ..., varN] = expression;
+```
+
+Where the expression just evaluates to a data structure whose size is known at compile-time. Note, we have to use the `auto` type identifier here because `var1`, `var2`, etc. are not guaranteed to be of the same type, so the compiler does the heavy lifting for us here and deduces the types of each unpacked variable.
+
+It's important to note that this initialization technique only works with data structures whose size is known at compile-time. For instance, the following code would not work.
+
+```cpp,runnable
+std::vector<std::string> getClassInfo() {
+    std::string className = "CS106L";
+    std::string location = "online";
+    std::string language = "C++";
+    std::vector<std::string> classVector {"CS106L", "online", "C++"};
+    return classVector;
+}
+int main() {
+    auto [className, location, language] = getClassInfo();
+    std::cout << "Join us " << location << " for " << className << " to learn " << language << "!" << std::endl;
+    return 0;
+}
+```
+
+The `std::vector` data structure doesn't have a known size at compile-time.
+
 ## What is a reference?
 
 C++ has rich memory semantics embedded into it, and at its core sits the idea of a reference. Precisely, a reference is an alias to something that already exists in memory. A reference in C++ is denoted using and ampersand(`&`) character.
