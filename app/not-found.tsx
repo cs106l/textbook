@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <Stack textAlign="center" spacing={2} mt={4}>
+    <Stack textAlign="center" spacing={2} mt={4} flexGrow={1}>
       <Typography
         variant="h1"
         fontSize="4.5rem"
