@@ -51,7 +51,6 @@ export default function ClientTOC({ node }: { node: ClientTOCNode }) {
       disableSelection
       disabledItemsFocusable
       sx={{
-        transform: "translateX(-8px)",
         position: "relative",
         color: "var(--palette-text-secondary)",
 
