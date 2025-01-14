@@ -29,13 +29,10 @@ int main() {
 
 Syntactically speaking, direct initialization relies on the use of a `=` or a parenthesis `()`.
 
-### Advantages
 
-In cases where you're initializing something like an integer, or a built-in type, like `int`, `double`, `bool`, `std::string`, to name a few, of C++, direct initialization is conventient and simple.
-
-### Disadvantages
-
-if you notice the above examples we've declared that foo is an _`int`_. However, we're initializing it using the value 12.0, which is a `double`. Yet, the compiler here won't actually produce an error if you use default initlizatiing. Given that C++ is a statically-typed language, in the scenario where this type mis-match between the variable and the value isn't a deliberate choice, as it is here, this would be considered a bug. This is known as a **narrowing conversion**, where the compiler will implicitly cast the value assigned to a variable to the type of the variable.
+| Advantages | Disadvantages |
+|------------|---------------|
+| In cases where you're initializing something like an integer, or a built-in type, like `int`, `double`, `bool`, `std::string`, to name a few, of C++, direct initialization is conventient and simple. | if you notice the above examples we've declared that foo is an _`int`_. However, we're initializing it using the value 12.0, which is a `double`. Yet, the compiler here won't actually produce an error if you use default initlizatiing. Given that C++ is a statically-typed language, in the scenario where this type mis-match between the variable and the value isn't a deliberate choice, as it is here, this would be considered a bug. This is known as a **narrowing conversion**, where the compiler will implicitly cast the value assigned to a variable to the type of the variable. | 
 
 ## Uniform Initialization (C++11)
 
