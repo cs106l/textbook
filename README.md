@@ -53,10 +53,10 @@ On completion, we plan for the textbook to have the following contents (may chan
 
 ## Under Construction
 
-- [ ] 📝 Inline quizzes
+- [x] 📝 Inline quizzes
 - [ ] 💾 Memory diagrams
 - [ ] 🧜 [Mermaid](https://mermaid.js.org/) diagrams
-- [ ] 📗 Chapter list
+- [x] 📗 Chapter list
 - [ ] 🔍 Search
-- [ ] 📚 Table of contents
+- [x] 📚 Table of contents
 - [ ] ▶️ Runnable code
