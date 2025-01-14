@@ -120,9 +120,8 @@ int main() {
 | Advantages | Disadvantages |
 | ---------- | ------------- |
 
-|- Ubiquitous, it works for all objects in C++
-
-- Enforces type-safety disallowing narrowing-conversions| Overloading conflicts with uniform initialization |
+| (1)Ubiquitous, it works for all objects in C++
+(2)Enforces type-safety disallowing narrowing-conversions| Overloading conflicts with uniform initialization |
 
 ## Structured Binding (C++17)
 
