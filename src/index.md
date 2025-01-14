@@ -3,7 +3,7 @@ title: Introduction
 description: The introduction to the course reader!
 ---
 
-<!-- This is the front page of the textbook! --> 
+{/* This is the frontpage of the textbook! */}
 
 # Introduction
 
