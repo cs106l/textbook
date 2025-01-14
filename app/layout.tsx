@@ -67,6 +67,7 @@ export function StickyBlock(props: BoxProps) {
       height={`calc(100vh - ${NavOffset})`}
       top={NavOffset}
       position="sticky"
+      sx={{ overflowY: "auto" }}
       {...props}
     />
   );
