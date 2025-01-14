@@ -29,14 +29,13 @@ int main() {
 
 Syntactically speaking, direct initialization relies on the use of a `=` or a parenthesis `()`.
 
-
-| Advantages | Disadvantages |
-|------------|---------------|
-| In cases where you're initializing something like an integer, or a built-in type, like `int`, `double`, `bool`, `std::string`, to name a few, of C++, direct initialization is conventient and simple. | if you notice the above examples we've declared that foo is an _`int`_. However, we're initializing it using the value 12.0, which is a `double`. Yet, the compiler here won't actually produce an error if you use default initlizatiing. Given that C++ is a statically-typed language, in the scenario where this type mis-match between the variable and the value isn't a deliberate choice, as it is here, this would be considered a bug. This is known as a **narrowing conversion**, where the compiler will implicitly cast the value assigned to a variable to the type of the variable. | 
+| Advantages                                                                                                                                                                                             | Disadvantages                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| In cases where you're initializing something like an integer, or a built-in type, like `int`, `double`, `bool`, `std::string`, to name a few, of C++, direct initialization is conventient and simple. | if you notice the above examples we've declared that foo is an _`int`_. However, we're initializing it using the value 12.0, which is a `double`. Yet, the compiler here won't actually produce an error if you use default initlizatiing. Given that C++ is a statically-typed language, in the scenario where this type mis-match between the variable and the value isn't a deliberate choice, as it is here, this would be considered a bug. This is known as a **narrowing conversion**, where the compiler will implicitly cast the value assigned to a variable to the type of the variable. |
 
 ## Uniform Initialization (C++11)
 
-Uniform initialization resolves many of the problems that come with direct initialization -- namely the type safety issue associated with narrowing conversion. More importantly, uniform initialization works for **_ALL_** types in C++, even those that you'll define, like structs and custom classes.
+Uniform initialization resolves many of the problems that come with direct initialization -- namely the type safety issue associated with narrowing conversion. More importantly, uniform initialization works for **_ALL_** types in C++, even those that you'll define, like structs and custom classes. In short, uniform initialization is a consistent, type-safe syntax that uses `{}` to initialize objects in C++.
 
 Let's use the `IDCard` example from the last section, recall it looks like this:
 
@@ -57,7 +56,7 @@ int main() {
 }
 ```
 
-In order to use uniform initialization we need to wrap the values that we want to construct our variable with within `{}` brackets. Special attention needs to be paid to the values that are passed into the brace-encolsed initialzer. Uniform initialization enforces type-safety in C++ in that if the types of the values passed in which will be used in variable construction defer from those that we expect, the compiler will throw an error.
+In order to use uniform initialization we need to wrap the values that we want to construct our variable with within `{}` brackets. Special attention needs to be paid to the values that are passed into the brace-encolsed initialzer. Uniform initialization enforces type-safety in C++ in that if the types of the values passed in which will be used in variable construction defer from those that we expect, the compiler will throw an error. To be clear, C++ is a typed language, but certain features of the language enforce type-safety more than others.
 
 For instance the following:
 
@@ -118,14 +117,12 @@ int main() {
 }
 ```
 
-### Advantages
+| Advantages | Disadvantages |
+| ---------- | ------------- |
 
-- Ubiquitous
-- Type-safe
+|- Ubiquitous, it works for all objects in C++
 
-### Disadvantages
-
-- Overloading conflicts with uniform initialization
+- Enforces type-safety disallowing narrowing-conversions| Overloading conflicts with uniform initialization |
 
 ## Structured Binding (C++17)
 
@@ -153,9 +150,9 @@ The syntax for structured binding is:
 auto [var1, var2, ..., varN] = expression;
 ```
 
-Where the expression just evaluates to a data structure whose size is known at compile-time. Note, we have to use the `auto` type identifier here because `var1`, `var2`, etc. are not guaranteed to be of the same type, so the compiler does the heavy lifting for us here and deduces the types of each unpacked variable.
+Where the expression just evaluates to a data structure whose size is _always_ known at compile-time. Note, we have to use the `auto` type identifier here because `var1`, `var2`, etc. are not guaranteed to be of the same type, so the compiler does the heavy lifting for us here and deduces the types of each unpacked variable.
 
-It's important to note that this initialization technique only works with data structures whose size is known at compile-time. For instance, the following code would not work.
+Because the size of a vector is not always the same at compile-time, the following code would not work. The size of the vector could be 100, or 3, depending on how the dynamic allocation happens within the `std::vector` class (more details on this in a subsequent module).
 
 ```cpp,runnable
 std::vector<std::string> getClassInfo() {
