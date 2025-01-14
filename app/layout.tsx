@@ -57,9 +57,10 @@ function Header() {
   );
 }
 
-function StickyBlock(props: BoxProps) {
+export function StickyBlock(props: BoxProps) {
   return (
     <Box
+      component="nav"
       width={250}
       flexShrink={0}
       flexGrow={0}
@@ -86,14 +87,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <StickyBlock display={{ xs: "none", md: "block" }}>
                   <ChapterTree />
                 </StickyBlock>
-                <Box flexGrow={1} marginBottom={4}>
-                  <Container maxWidth="md" sx={{ padding: 0 }}>
-                    {children}
-                  </Container>
-                </Box>
-                <StickyBlock display={{ xs: "none", lg: "block" }}>
-                  {/* This is a placeholder for an eventual page TOC. */}
-                </StickyBlock>
+                {children}
               </Box>
             </Container>
           </ThemeProvider>

@@ -9,9 +9,11 @@ import { SKIP, visit } from "unist-util-visit";
 import { toString } from "mdast-util-to-string";
 
 import type { Heading, Text, InlineCode } from "mdast";
+import GithubSlugger from "github-slugger";
 
 export type TOCNode = {
-  heading?: string;
+  title?: string;
+  id: string;
   depth: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   content: string;
   children: TOCNode[];
@@ -22,16 +24,21 @@ const remarkTOC: Plugin = () => {
     const stack: TOCNode[] = [
       {
         depth: 0,
+        id: "",
         content: "",
         children: [],
       },
     ];
 
+    const slugger = new GithubSlugger();
+
     visit(tree, (node) => {
       if (node.type === "heading") {
         const heading = node as Heading;
+        const headingContent = toString(heading);
         const toc: TOCNode = {
-          heading: toString(heading),
+          title: headingContent,
+          id: slugger.slug(headingContent),
           depth: heading.depth,
           content: "",
           children: [],

@@ -21,8 +21,21 @@ export type BookNode = {
   route: string;
   meta: NodeMetadata;
   toc: TOCNode;
+  links: BookLinks;
   content: React.ReactNode;
   children: BookNode[];
+};
+
+export type BookLinks = {
+  /**
+   * The previous page in sequence, if any.
+   */
+  prev: BookNode | null;
+
+  /**
+   * The next page in sequence, if any.
+   */
+  next: BookNode | null;
 };
 
 export type NodeMetadata = Omit<
@@ -56,14 +69,9 @@ export type NodeMetadata = Omit<
   hidden: boolean;
 
   /**
-   * The previous page in sequence, if any.
+   * The link to this page's source on GitHub
    */
-  prev: BookNode | null;
-
-  /**
-   * The next page in sequence, if any.
-   */
-  next: BookNode | null;
+  github: string;
 };
 
 const MarkdownExtensions = [".md", ".mdx"];
@@ -101,8 +109,8 @@ async function build(): Promise<Book> {
   function setPrevNext(node: BookNode[] | BookNode) {
     if (prev) {
       if (!Array.isArray(node)) {
-        prev.meta.next = node;
-        node.meta.prev = prev;
+        prev.links.next = node;
+        node.links.prev = prev;
       }
     }
 
@@ -232,16 +240,16 @@ async function buildNode(
     path: browserPath,
     nav_title: result.data.nav_title ?? result.data.title,
     hidden: result.data.hidden ?? false,
-
-    // Set these to null now, we will populate them once the tree is constructed
-    prev: null,
-    next: null,
+    github: `https://github.com/cs106l/textbook/blob/main/${contentPath}`,
   };
 
   const node: BookNode = {
     route,
     meta,
     toc: await compileTOC(content),
+
+    // Setting these to null now, we will populate them once the tree is constructed
+    links: { prev: null, next: null },
     content: <Page meta={meta} source={rawContent} />,
     children: [],
   };

@@ -11,6 +11,9 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-brands-svg-icons": "^6.7.2",
+    "@fortawesome/react-fontawesome": "^0.2.2",
     "@heroicons/react": "^2.2.0",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/mdx": "^3.1.0",
@@ -20,6 +23,7 @@
     "@mui/x-tree-view": "^7.23.2",
     "@types/mdx": "^2.0.13",
     "diff": "^7.0.0",
+    "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.0",
     "katex": "^0.16.15",

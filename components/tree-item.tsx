@@ -1,4 +1,4 @@
-import { Link } from "@mui/material";
+import { Link, SxProps } from "@mui/material";
 import {
   TreeItem2Checkbox,
   TreeItem2Content,
@@ -13,17 +13,24 @@ import {
 } from "@mui/x-tree-view";
 import { forwardRef, useMemo } from "react";
 
+export const TreeItemClasses = {
+  label: "tree-item-label",
+  iconContainer: "tree-item-icon-container",
+  content: "tree-item-content",
+} as const;
+
 export interface NavItemProps
   extends Omit<UseTreeItem2Parameters, "rootRef">,
-  Omit<React.HTMLAttributes<HTMLLIElement>, "onFocus"> {
+    Omit<React.HTMLAttributes<HTMLLIElement>, "onFocus"> {
   href?: string;
+  sx?: SxProps;
 }
 
-const NavItem = forwardRef(function CustomTreeItem(
+const TreeItem = forwardRef(function CustomTreeItem(
   props: NavItemProps,
   ref: React.Ref<HTMLLIElement>
 ) {
-  const { id, itemId, label, href, disabled, children, ...other } = props;
+  const { id, itemId, label, href, disabled, children, sx, ...other } = props;
 
   const {
     getRootProps,
@@ -44,6 +51,7 @@ const NavItem = forwardRef(function CustomTreeItem(
           flexDirection: "row-reverse",
           cursor: disabled ? "unset" : undefined,
         }}
+        className={TreeItemClasses.content}
       >
         <TreeItem2IconContainer
           {...getIconContainerProps()}
@@ -51,11 +59,15 @@ const NavItem = forwardRef(function CustomTreeItem(
             transform: status.expanded ? "rotate(180deg)" : "rotate(90deg)",
             transition: "transform 0.2s ease",
           }}
+          className={TreeItemClasses.iconContainer}
         >
           <TreeItem2Icon status={status} />
         </TreeItem2IconContainer>
         <TreeItem2Checkbox {...getCheckboxProps()} />
-        <TreeItem2Label {...getLabelProps()} />
+        <TreeItem2Label
+          {...getLabelProps()}
+          className={TreeItemClasses.label}
+        />
       </TreeItem2Content>
     );
     if (!disabled && href)
@@ -69,11 +81,19 @@ const NavItem = forwardRef(function CustomTreeItem(
         </Link>
       );
     return innerContents;
-  }, [getCheckboxProps, getContentProps, getIconContainerProps, getLabelProps, status, disabled, href]);
+  }, [
+    getCheckboxProps,
+    getContentProps,
+    getIconContainerProps,
+    getLabelProps,
+    status,
+    disabled,
+    href,
+  ]);
 
   return (
     <TreeItem2Provider itemId={itemId}>
-      <TreeItem2Root {...getRootProps(other)}>
+      <TreeItem2Root {...getRootProps(other)} sx={sx}>
         {linkedContents}
         {children && (
           <TreeItem2GroupTransition {...getGroupTransitionProps()} />
@@ -83,4 +103,4 @@ const NavItem = forwardRef(function CustomTreeItem(
   );
 });
 
-export default NavItem;
+export default TreeItem;

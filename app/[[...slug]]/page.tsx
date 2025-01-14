@@ -1,11 +1,25 @@
 import { Book, BookNode, buildBook } from "../book";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { Grid2, Grid2Props, Link, SvgIcon, Typography } from "@mui/material";
+import {
+  Box,
+  Container,
+  Divider,
+  Grid2,
+  Grid2Props,
+  Link,
+  SvgIcon,
+  Typography,
+} from "@mui/material";
 
 import { ChevronLeftIcon } from "@heroicons/react/16/solid";
 import { ChevronRightIcon } from "@heroicons/react/16/solid";
 import React from "react";
+import { StickyBlock } from "../layout";
+import TOCView from "@/components/toc";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGithub } from "@fortawesome/free-brands-svg-icons";
 
 type Params = {
   slug?: string[];
@@ -40,14 +54,47 @@ export async function generateStaticParams(): Promise<Params[]> {
 export default async function Page({ params }: { params: Promise<Params> }) {
   const page = await getPage(params);
   return (
-    <>
-      {page.content}
-      <ChildPages
-        pages={page.children.filter((p) => !p.meta.hidden)}
-        marginTop={2}
-      />
-      <PageNavigation page={page} marginTop={4} />
-    </>
+    <Box
+      flexGrow={1}
+      display={{ md: "unset", lg: "flex" }}
+      flexDirection="row"
+      minWidth={0}
+    >
+      <Container
+        maxWidth="md"
+        sx={{ padding: 0, marginBottom: 4, minWidth: 0 }}
+      >
+        {page.content}
+        <ChildPages
+          pages={page.children.filter((p) => !p.meta.hidden)}
+          marginTop={2}
+        />
+        <PageNavigation page={page} marginTop={4} />
+      </Container>
+      <StickyBlock display={{ xs: "none", lg: "block" }}>
+        {page.toc.children.length > 0 && (
+          <Box>
+            <TOCView node={page} />
+            <Divider sx={{ my: 2 }} />
+          </Box>
+        )}
+        <Box>
+          <Link
+            href={page.meta.github}
+            color="textSecondary"
+            display="flex"
+            alignItems="center"
+            target="_blank"
+          >
+            <Typography fontSize="0.875rem">Edit on GitHub</Typography>
+            <FontAwesomeIcon
+              icon={faGithub}
+              style={{ height: "16px", marginLeft: "8px" }}
+            />
+          </Link>
+        </Box>
+      </StickyBlock>
+    </Box>
   );
 }
 
@@ -91,11 +138,11 @@ function ChildPages({ pages, ...rest }: Grid2Props & { pages: BookNode[] }) {
 }
 
 function PageNavigation({ page, ...rest }: Grid2Props & { page: BookNode }) {
-  if (page.meta.prev === null && page.meta.next === null) return null;
+  if (page.links.prev === null && page.links.next === null) return null;
   return (
     <Grid2 container spacing={2} {...rest}>
       <PageNavigationItem
-        page={page.meta.prev}
+        page={page.links.prev}
         label="Previous"
         icon={
           <SvgIcon fontSize="small">
@@ -105,7 +152,7 @@ function PageNavigation({ page, ...rest }: Grid2Props & { page: BookNode }) {
         align="left"
       />
       <PageNavigationItem
-        page={page.meta.next}
+        page={page.links.next}
         label="Next"
         icon={
           <SvgIcon fontSize="small">
