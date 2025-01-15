@@ -180,7 +180,7 @@ std::cout << result.second << std::endl;
 
 ## Modern Typing
 
-Because C++ is a statically-typed language, the types of every variable, parameter, and function return type must be known at compile time. While this affords us many perks (as discussed above), writing out long type names can become inconvenient. To counteract this, there are two mechanisms to avoid having to always write out type names.
+Because C++ is a statically-typed language, the types of every variable, parameter, and function return type must be known at compile time. While this affords us many perks (as discussed above), writing out long type names can become inconvenient. To counteract this, modern C++ offers two mechanisms to make typing easier.
 
 Consider the following function signature, which computes the solution to the quadratic equation $ax^2+bx+c=0$ as a `std::pair<bool, std::pair<double, double>>`. Note that the `bool` field indicates whether or not the equation had a solution. 
 
@@ -190,7 +190,7 @@ std::pair<bool, std::pair<double, double>> solveQuadratic(double a, double b, do
 
 > In modern C++, it would make more sense to return a `std::optional<std::pair<double, double>>` here. `std::optional` is discussed in a later chapter.
 
-### Types aliases with `using`
+### Type aliases with `using`
 
 To avoid the hassle of writing a long type name like `std::pair<bool, std::pair<double, double>>`, we could create a type alias for that type with the `using` keyword. If you have used C before, this is identical to a `typedef`:
 
@@ -241,7 +241,7 @@ The compiler can even infer the return type of a function, so long as it is unam
 }
 ```
 
-In this case, the compiler examines the type of the returned object (`20`) to derive the return type of `smeagol`. However, in the following example, the compiler cannot deduce if the return type is, e.g. a `std::pair<double, double>`, a `std::vector<double>`, or some user-defined struct containing two `double` fields:
+In this case, the compiler examines the type of the returned object (`20`) to derive the return type of `smeagol` as `int`. However, in the following example, the compiler cannot deduce if the return type is, e.g. a `std::pair<double, double>`, a `std::vector<double>`, or some user-defined struct containing two `double` fields:
 
 ```cpp
 `[auto]` oops() {

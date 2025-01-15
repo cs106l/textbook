@@ -72,11 +72,7 @@ export default function ClientTree({ nodes }: { nodes: ClientTreeNode[] }) {
   );
 
   return (
-    <SimpleTreeView
-      disableSelection
-      sx={{ transform: "translateX(-8px)" }}
-      defaultExpandedItems={expandedItems}
-    >
+    <SimpleTreeView disableSelection defaultExpandedItems={expandedItems}>
       {nodes.map((node) => (
         <NodeView key={node.path} node={node} />
       ))}
