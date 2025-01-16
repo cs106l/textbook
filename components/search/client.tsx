@@ -1,6 +1,12 @@
 "use client";
 
-import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
+import {
+  Bars3BottomLeftIcon,
+  DocumentTextIcon,
+  HashtagIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/24/outline";
+
 import {
   Box,
   Button,
@@ -249,20 +255,22 @@ function SearchResults({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [focusRef]);
 
   return (
     <SimpleTreeView
       disabledItemsFocusable
       onItemFocus={() => (lastFocusChange.current = Date.now())}
+      onItemSelectionToggle={onClose}
     >
       {clusters.map((cluster, index) => (
         <TreeItem
           key={cluster.path}
           itemId={cluster.path}
-          label={cluster.title}
+          label={
+            <IconLabel icon={<DocumentTextIcon />}>{cluster.title}</IconLabel>
+          }
           href={cluster.path}
-          onClick={onClose}
           ref={index === 0 ? firstItemRef : undefined}
         >
           {cluster.results.map((result) => (
@@ -271,9 +279,16 @@ function SearchResults({
               itemId={`${result.heading ? "heading" : "content"}-${
                 result.slug
               }`}
-              label={result.title}
+              label={
+                <IconLabel
+                  icon={
+                    result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />
+                  }
+                >
+                  {result.content}
+                </IconLabel>
+              }
               href={`${result.path}#${result.slug}`}
-              onClick={onClose}
             />
           ))}
         </TreeItem>
@@ -296,5 +311,20 @@ function SearchResults({
         </Stack>
       )}
     </SimpleTreeView>
+  );
+}
+
+function IconLabel({
+  icon,
+  children,
+}: {
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Stack direction="row" spacing={1} alignItems="center">
+      <SvgIcon sx={{ fontSize: "1.25em" }}>{icon}</SvgIcon>
+      <Typography>{children}</Typography>
+    </Stack>
   );
 }

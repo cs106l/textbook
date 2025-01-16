@@ -11,6 +11,7 @@ import {
   useTreeItem2,
   UseTreeItem2Parameters,
 } from "@mui/x-tree-view";
+import { useRouter } from "next/navigation";
 import { forwardRef, useMemo } from "react";
 
 export const TreeItemClasses = {
@@ -91,9 +92,27 @@ const TreeItem = forwardRef(function CustomTreeItem(
     href,
   ]);
 
+  const rootProps = getRootProps(other);
+  const router = useRouter();
+
   return (
     <TreeItem2Provider itemId={itemId}>
-      <TreeItem2Root {...getRootProps(other)} sx={sx}>
+      <TreeItem2Root
+        {...rootProps}
+        onKeyDown={(evt) => {
+          /* If we press enter on a TreeItem and it has an href, navigate to that page */
+          if (
+            evt.key === "Enter" &&
+            href &&
+            document.activeElement === evt.currentTarget
+          ) {
+            router.push(href);
+            evt.preventDefault();
+          }
+          rootProps.onKeyDown(evt);
+        }}
+        sx={sx}
+      >
         {linkedContents}
         {children && (
           <TreeItem2GroupTransition {...getGroupTransitionProps()} />
