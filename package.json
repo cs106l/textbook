@@ -23,6 +23,7 @@
     "@mui/x-tree-view": "^7.23.2",
     "@types/mdx": "^2.0.13",
     "diff": "^7.0.0",
+    "flexsearch": "^0.7.43",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.0",

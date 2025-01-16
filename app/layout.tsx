@@ -17,6 +17,7 @@ import Image from "next/image";
 import Lightswitch from "@/components/lightswitch";
 
 import "./global.scss";
+import Search from "@/components/search";
 
 const NavOffset = "6rem";
 
@@ -51,7 +52,10 @@ function Header() {
             Learn C++
           </Typography>
         </Stack>
-        <Lightswitch />
+        <Stack direction="row" spacing={1}>
+          <Search />
+          <Lightswitch />
+        </Stack>
       </Container>
     </Box>
   );
