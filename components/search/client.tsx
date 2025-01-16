@@ -99,6 +99,7 @@ export type SearchModalProps = SearchClientProps & {
 
 function SearchModal(props: SearchModalProps) {
   const { open, onClose, query, setQuery } = props;
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
 
   return (
     <Modal
@@ -141,9 +142,12 @@ function SearchModal(props: SearchModalProps) {
               autoFocus
               placeholder="Search textbook..."
               variant="standard"
-              slotProps={{ input: { disableUnderline: true } }}
+              slotProps={{
+                input: { disableUnderline: true, autoComplete: "off" },
+              }}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              inputRef={inputRef}
             />
             <Button
               variant="outlined"
@@ -157,7 +161,7 @@ function SearchModal(props: SearchModalProps) {
           </Stack>
           <Divider />
           <Box paddingY={1} paddingX={2}>
-            <SearchResults {...props} />
+            <SearchResults focusRef={inputRef} {...props} />
           </Box>
         </Container>
       </Grow>
@@ -193,12 +197,14 @@ function clusterResults(
 type SearchResultsProps = SearchClientProps & {
   onClose: () => void;
   query: string;
+  focusRef: React.RefObject<HTMLElement | null>;
 };
 
 function SearchResults({
   defaultSuggestions,
   onClose,
   query,
+  focusRef,
 }: SearchResultsProps) {
   const [results, setResults] =
     React.useState<SearchResult[]>(defaultSuggestions);
@@ -212,15 +218,52 @@ function SearchResults({
     else setResults(defaultSuggestions);
   }, [query, defaultSuggestions]);
 
+  /* On arrow down/up change focus from tree to input and vice-versa */
+  const firstItemRef = React.useRef<HTMLLIElement | null>(null);
+  const lastFocusChange = React.useRef<number>(0);
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!focusRef?.current || !firstItemRef.current) return;
+
+      if (
+        event.key === "ArrowDown" &&
+        focusRef.current === document.activeElement
+      ) {
+        event.preventDefault();
+        firstItemRef.current.focus();
+      }
+
+      // We need to build in a small delay before switching to the
+      // focusRef when pressing up arrow on the first item.
+      // This is to prevent us from pressing up on the second item
+      // and then focus immediately switching to the focusRef.
+      if (
+        event.key === "ArrowUp" &&
+        firstItemRef.current === document.activeElement &&
+        Date.now() - lastFocusChange.current > 25
+      ) {
+        event.preventDefault();
+        focusRef.current.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
-    <SimpleTreeView>
-      {clusters.map((cluster) => (
+    <SimpleTreeView
+      disabledItemsFocusable
+      onItemFocus={() => (lastFocusChange.current = Date.now())}
+    >
+      {clusters.map((cluster, index) => (
         <TreeItem
           key={cluster.path}
           itemId={cluster.path}
           label={cluster.title}
           href={cluster.path}
           onClick={onClose}
+          ref={index === 0 ? firstItemRef : undefined}
         >
           {cluster.results.map((result) => (
             <TreeItem
@@ -237,7 +280,11 @@ function SearchResults({
       ))}
       {results.length === 0 && (
         <Stack height={100} justifyContent="center">
-          <Typography textAlign="center" color="textSecondary">
+          <Typography
+            textAlign="center"
+            color="textSecondary"
+            sx={{ overflowWrap: "break-word" }}
+          >
             No results found for &ldquo;
             {
               <Typography component="span" color="var(--palette-primary-main)">
