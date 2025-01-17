@@ -22,12 +22,8 @@ import {
 import { SimpleTreeView } from "@mui/x-tree-view";
 import React from "react";
 import TreeItem from "../tree-item";
-import {
-  newDoc,
-  SearchResult,
-  type SearchIndex,
-  type SerializedIndex,
-} from "./common";
+import { newDoc, SearchResult, type SearchIndex } from "./common";
+import ContextLabel from "./context";
 
 export type SearchClientProps = {
   defaultSuggestions: SearchResult[];
@@ -37,9 +33,31 @@ export default function SearchClient(props: SearchClientProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
 
+  const [index, setIndex] = React.useState<SearchIndex | null>(null);
+  const indexLoading = React.useRef(false);
+
   const openModal = React.useCallback(() => {
     setOpen(true);
     setQuery("");
+
+    /** Download the search index when the UI is opened */
+    const fetcher = async () => {
+      if (indexLoading.current) return;
+      indexLoading.current = true;
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/search.json`
+      );
+      const data = await res.json();
+      const doc = newDoc();
+
+      for (const [id, item] of data) {
+        await doc.import(id, item);
+      }
+
+      setIndex(doc);
+    };
+
+    fetcher();
   }, []);
 
   /* Open search bar on Ctrl+K or Command+K */
@@ -95,6 +113,7 @@ export default function SearchClient(props: SearchClientProps) {
         onClose={() => setOpen(false)}
         query={query}
         setQuery={setQuery}
+        index={index}
         {...props}
       />
     </>
@@ -106,6 +125,7 @@ export type SearchModalProps = SearchClientProps & {
   onClose: () => void;
   query: string;
   setQuery: (query: string) => void;
+  index: SearchIndex | null;
 };
 
 function SearchModal(props: SearchModalProps) {
@@ -205,55 +225,33 @@ function clusterResults(
   return [...clusters.values()];
 }
 
-type SearchResultsProps = SearchClientProps & {
-  open: boolean;
-  onClose: () => void;
-  query: string;
+type SearchResultsProps = SearchModalProps & {
   focusRef: React.RefObject<HTMLElement | null>;
 };
 
 function SearchResults({
   defaultSuggestions,
-  open,
+  index,
   onClose,
   query,
   focusRef,
 }: SearchResultsProps) {
-  const [doc, setDoc] = React.useState<SearchIndex | null>(null);
-  const docLoading = React.useRef(false);
-
   const [results, setResults] =
     React.useState<SearchResult[]>(defaultSuggestions);
   const clusters = React.useMemo(
-    () => clusterResults(results, query.length === 0),
-    [results, query]
+    () => clusterResults(results, index !== null && query.length === 0),
+    [index, results, query]
   );
 
+  /** Run search when query changes */
   React.useEffect(() => {
-    if (query && doc) {
-      const results = doc
-        .search(query, 10, { enrich: true })
+    if (query && index) {
+      const results = index
+        .search(query, undefined, { limit: 10, enrich: true })
         .flatMap((r) => r.result.map((item) => item.doc));
       setResults(results);
     } else setResults(defaultSuggestions);
-  }, [doc, query, defaultSuggestions]);
-
-  /** Download the search index when the UI is opened */
-  React.useEffect(() => {
-    if (doc || !open) return;
-    if (docLoading.current) return;
-    docLoading.current = true;
-    fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/search.json`)
-      .then((res) => res.json())
-      .then(async (data: SerializedIndex) => {
-        const doc = newDoc();
-        for (const [id, item] of data) {
-          await doc.import(id, item);
-        }
-        return doc;
-      })
-      .then((doc) => setDoc(doc));
-  }, [doc, open]);
+  }, [index, query, defaultSuggestions]);
 
   /* On arrow down/up change focus from tree to input and vice-versa */
   const firstItemRef = React.useRef<HTMLLIElement | null>(null);
@@ -301,7 +299,7 @@ function SearchResults({
           key={cluster.path}
           itemId={cluster.path}
           label={
-            <IconLabel icon={<DocumentTextIcon />} content={cluster.title} />
+            <ContextLabel icon={<DocumentTextIcon />} content={cluster.title} />
           }
           href={cluster.path}
           ref={index === 0 ? firstItemRef : undefined}
@@ -313,7 +311,7 @@ function SearchResults({
                 result.slug
               }-${result.id}`}
               label={
-                <IconLabel
+                <ContextLabel
                   icon={
                     result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />
                   }
@@ -344,23 +342,5 @@ function SearchResults({
         </Stack>
       )}
     </SimpleTreeView>
-  );
-}
-
-function IconLabel({
-  icon,
-  content,
-}: {
-  icon?: React.ReactNode;
-  content: string;
-  query?: string;
-}) {
-  return (
-    <Stack direction="row" spacing={1} alignItems="center">
-      <SvgIcon sx={{ fontSize: "1.25em" }}>{icon}</SvgIcon>
-      <Typography whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
-        {content}
-      </Typography>
-    </Stack>
   );
 }

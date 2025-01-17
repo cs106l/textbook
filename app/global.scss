@@ -16,15 +16,18 @@
   margin-right: -2px;
 }
 
-.codeblock .highlight {
-  padding-left: 3px;
-  padding-right: 3px;
+.highlight {
   background-color: #ffed25a3;
   border-radius: var(--shape-borderRadius);
-  margin-left: -3px;
-  margin-right: -3px;
 
   *:where(.dark) & {
     background-color: #46480f;
   }
+}
+
+.codeblock .highlight {
+  padding-left: 3px;
+  padding-right: 3px;
+  margin-left: -3px;
+  margin-right: -3px;
 }
