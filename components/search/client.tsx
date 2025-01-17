@@ -22,7 +22,12 @@ import {
 import { SimpleTreeView } from "@mui/x-tree-view";
 import React from "react";
 import TreeItem from "../tree-item";
-import { SearchResult } from ".";
+import {
+  newDoc,
+  SearchResult,
+  type SearchIndex,
+  type SerializedIndex,
+} from "./common";
 
 export type SearchClientProps = {
   defaultSuggestions: SearchResult[];
@@ -201,6 +206,7 @@ function clusterResults(
 }
 
 type SearchResultsProps = SearchClientProps & {
+  open: boolean;
   onClose: () => void;
   query: string;
   focusRef: React.RefObject<HTMLElement | null>;
@@ -208,21 +214,46 @@ type SearchResultsProps = SearchClientProps & {
 
 function SearchResults({
   defaultSuggestions,
+  open,
   onClose,
   query,
   focusRef,
 }: SearchResultsProps) {
+  const [doc, setDoc] = React.useState<SearchIndex | null>(null);
+  const docLoading = React.useRef(false);
+
   const [results, setResults] =
     React.useState<SearchResult[]>(defaultSuggestions);
   const clusters = React.useMemo(
-    () => clusterResults(results, true),
-    [results]
+    () => clusterResults(results, query.length === 0),
+    [results, query]
   );
 
   React.useEffect(() => {
-    if (query) setResults([]);
-    else setResults(defaultSuggestions);
-  }, [query, defaultSuggestions]);
+    if (query && doc) {
+      const results = doc
+        .search(query, 10, { enrich: true })
+        .flatMap((r) => r.result.map((item) => item.doc));
+      setResults(results);
+    } else setResults(defaultSuggestions);
+  }, [doc, query, defaultSuggestions]);
+
+  /** Download the search index when the UI is opened */
+  React.useEffect(() => {
+    if (doc || !open) return;
+    if (docLoading.current) return;
+    docLoading.current = true;
+    fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/search.json`)
+      .then((res) => res.json())
+      .then(async (data: SerializedIndex) => {
+        const doc = newDoc();
+        for (const [id, item] of data) {
+          await doc.import(id, item);
+        }
+        return doc;
+      })
+      .then((doc) => setDoc(doc));
+  }, [doc, open]);
 
   /* On arrow down/up change focus from tree to input and vice-versa */
   const firstItemRef = React.useRef<HTMLLIElement | null>(null);
@@ -262,13 +293,15 @@ function SearchResults({
       disabledItemsFocusable
       onItemFocus={() => (lastFocusChange.current = Date.now())}
       onItemSelectionToggle={onClose}
+      expandedItems={clusters.map((cluster) => cluster.path)}
+      onExpandedItemsChange={() => {}}
     >
       {clusters.map((cluster, index) => (
         <TreeItem
           key={cluster.path}
           itemId={cluster.path}
           label={
-            <IconLabel icon={<DocumentTextIcon />}>{cluster.title}</IconLabel>
+            <IconLabel icon={<DocumentTextIcon />} content={cluster.title} />
           }
           href={cluster.path}
           ref={index === 0 ? firstItemRef : undefined}
@@ -278,15 +311,15 @@ function SearchResults({
               key={result.id}
               itemId={`${result.heading ? "heading" : "content"}-${
                 result.slug
-              }`}
+              }-${result.id}`}
               label={
                 <IconLabel
                   icon={
                     result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />
                   }
-                >
-                  {result.content}
-                </IconLabel>
+                  content={result.content}
+                  query={query}
+                />
               }
               href={`${result.path}#${result.slug}`}
             />
@@ -316,15 +349,18 @@ function SearchResults({
 
 function IconLabel({
   icon,
-  children,
+  content,
 }: {
   icon?: React.ReactNode;
-  children: React.ReactNode;
+  content: string;
+  query?: string;
 }) {
   return (
     <Stack direction="row" spacing={1} alignItems="center">
       <SvgIcon sx={{ fontSize: "1.25em" }}>{icon}</SvgIcon>
-      <Typography>{children}</Typography>
+      <Typography whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
+        {content}
+      </Typography>
     </Stack>
   );
 }

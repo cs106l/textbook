@@ -1,22 +1,10 @@
 import { Book, BookNode, buildBook } from "@/app/book";
 import SearchClient from "./client";
-import FlexSearch from "flexsearch";
 
 import path from "path";
 import fs from "fs";
 import { TOCNode } from "../toc/compile";
-
-export type SearchResult = {
-  id: number;
-  content: string;
-  heading: boolean; // Is this search result a heading?
-  path: string; // The link to the page
-  slug: string; // The slug of the containing section
-  title: string; // The title of the containing page
-};
-
-export type Document = FlexSearch.Document<SearchResult, string[]>;
-export type SerializedDocument = [string | number, SearchResult][];
+import { newDoc, SearchIndex, SearchResult, SerializedIndex } from "./common";
 
 export default async function Search() {
   /**
@@ -37,15 +25,8 @@ export default async function Search() {
   return <SearchClient defaultSuggestions={getDefaultSuggestions(book)} />;
 }
 
-async function buildIndex(book: Book): Promise<Document> {
-  const doc = new FlexSearch.Document<SearchResult, string[]>({
-    document: {
-      id: "id",
-      index: "content",
-      store: ["heading", "path", "slug", "title"],
-    },
-  });
-
+async function buildIndex(book: Book): Promise<SearchIndex> {
+  const doc = newDoc();
   const counter: Counter = { index: 0 };
   book.forEach((node) => processBookNode(node, doc, counter));
 
@@ -54,7 +35,7 @@ async function buildIndex(book: Book): Promise<Document> {
 
 type Counter = { index: number };
 
-function processBookNode(node: BookNode, doc: Document, nextId: Counter) {
+function processBookNode(node: BookNode, doc: SearchIndex, nextId: Counter) {
   if (node.meta.hidden) return;
   processTocNode(node, node.toc, doc, nextId);
   node.children.forEach((child) => processBookNode(child, doc, nextId));
@@ -63,7 +44,7 @@ function processBookNode(node: BookNode, doc: Document, nextId: Counter) {
 function processTocNode(
   node: BookNode,
   toc: TOCNode,
-  doc: Document,
+  doc: SearchIndex,
   nextId: Counter
 ) {
   if (toc.title) {
@@ -104,8 +85,8 @@ function getDefaultSuggestions(book: Book): SearchResult[] {
   return suggestions;
 }
 
-async function serializeDocument(doc: Document): Promise<SerializedDocument> {
-  const serialized: SerializedDocument = [];
+async function serializeDocument(doc: SearchIndex): Promise<SerializedIndex> {
+  const serialized: SerializedIndex = [];
   await doc.export((key, data) => serialized.push([key, data]));
   return serialized;
 }
