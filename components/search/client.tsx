@@ -23,7 +23,7 @@ import { SimpleTreeView } from "@mui/x-tree-view";
 import React from "react";
 import TreeItem from "../tree-item";
 import { newDoc, SearchResult, type SearchIndex } from "./common";
-import ContextLabel from "./context";
+import { IconLabel, ContextTreeItem } from "./context";
 
 export type SearchClientProps = {
   defaultSuggestions: SearchResult[];
@@ -239,7 +239,7 @@ function SearchResults({
   const [results, setResults] =
     React.useState<SearchResult[]>(defaultSuggestions);
   const clusters = React.useMemo(
-    () => clusterResults(results, index !== null && query.length === 0),
+    () => clusterResults(results, index === null || query.length === 0),
     [index, results, query]
   );
 
@@ -299,28 +299,13 @@ function SearchResults({
           key={cluster.path}
           itemId={cluster.path}
           label={
-            <ContextLabel icon={<DocumentTextIcon />} content={cluster.title} />
+            <IconLabel icon={<DocumentTextIcon />}>{cluster.title}</IconLabel>
           }
           href={cluster.path}
           ref={index === 0 ? firstItemRef : undefined}
         >
           {cluster.results.map((result) => (
-            <TreeItem
-              key={result.id}
-              itemId={`${result.heading ? "heading" : "content"}-${
-                result.slug
-              }-${result.id}`}
-              label={
-                <ContextLabel
-                  icon={
-                    result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />
-                  }
-                  content={result.content}
-                  query={query}
-                />
-              }
-              href={`${result.path}#${result.slug}`}
-            />
+            <ContextTreeItem key={result.id} result={result} query={query} />
           ))}
         </TreeItem>
       ))}

@@ -1,6 +1,9 @@
 import { Stack, SvgIcon, Typography } from "@mui/material";
 import { escapeRegExp } from "lodash";
 import React from "react";
+import { SearchResult } from "./common";
+import TreeItem from "../tree-item";
+import { Bars3BottomLeftIcon, HashtagIcon } from "@heroicons/react/24/outline";
 
 type ContextRange = { start: number; end: number };
 
@@ -41,13 +44,18 @@ function getLargest(ranges: ContextRange[]): ContextRange {
   return largest;
 }
 
+type HighlightResult = {
+  content: React.ReactNode;
+  suggestion?: string;
+};
+
 function buildHighlight(
   content: string,
   query: string,
   contextWindow: number
-): React.ReactNode {
+): HighlightResult {
   const ranges = getRanges(content, query);
-  if (ranges.length === 0) return content;
+  if (ranges.length === 0) return { content };
   const largest = getLargest(ranges);
   const snippetStart = Math.max(largest.start - contextWindow, 0);
 
@@ -73,30 +81,55 @@ function buildHighlight(
     result.push(<span key={cursor}>{content.slice(cursor)}</span>);
   }
 
-  return result;
+  return {
+    content: result,
+    suggestion: content.slice(largest.start, largest.end),
+  };
 }
 
-export default function ContextLabel({
-  icon,
-  content,
+export function ContextTreeItem({
+  result,
   query,
-  contextWindow = 20,
 }: {
-  icon?: React.ReactNode;
-  content: string;
-  query?: string;
-  contextWindow?: number;
+  result: SearchResult;
+  query: string;
 }) {
-  const highlight = React.useMemo(() => {
-    if (!query) return content;
-    return buildHighlight(content, query, contextWindow);
-  }, [content, query, contextWindow]);
+  const { content } = React.useMemo(
+    () => buildHighlight(result.content, query, 20),
+    [result, query]
+  );
 
+  const href = React.useMemo(() => {
+    return `${result.path}#${result.slug}`;
+  }, [result]);
+
+  return (
+    <TreeItem
+      itemId={`${result.id}`}
+      label={
+        <IconLabel
+          icon={result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />}
+        >
+          {content}
+        </IconLabel>
+      }
+      href={href}
+    />
+  );
+}
+
+export function IconLabel({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <Stack direction="row" spacing={1} alignItems="center">
       <SvgIcon sx={{ fontSize: "1.25em" }}>{icon}</SvgIcon>
       <Typography whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
-        {highlight}
+        {children}
       </Typography>
     </Stack>
   );
