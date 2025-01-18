@@ -305,7 +305,20 @@ function SearchResults({
           ref={index === 0 ? firstItemRef : undefined}
         >
           {cluster.results.map((result) => (
-            <ContextTreeItem key={result.id} result={result} query={query} />
+            <TreeItem
+              key={result.id}
+              itemId={`${result.id}`}
+              label={
+                <IconLabel
+                  icon={
+                    result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />
+                  }
+                >
+                  {buildContextHighlight(result.content, query, 20)}
+                </IconLabel>
+              }
+              href={`${result.path}#${result.slug}`}
+            />
           ))}
         </TreeItem>
       ))}
@@ -327,39 +340,6 @@ function SearchResults({
         </Stack>
       )}
     </SimpleTreeView>
-  );
-}
-
-function ContextTreeItem({
-  result,
-  query,
-}: {
-  result: SearchResult;
-  query: string;
-}) {
-  const { content, suggestion } = React.useMemo(
-    () => buildContextHighlight(result.content, query, 20),
-    [result, query]
-  );
-
-  const href = React.useMemo(() => {
-    if (document.fragmentDirective && suggestion)
-      return `${result.path}#:~:text=${suggestion}`;
-    return `${result.path}#${result.slug}`;
-  }, [result, suggestion]);
-
-  return (
-    <TreeItem
-      itemId={`${result.id}`}
-      label={
-        <IconLabel
-          icon={result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />}
-        >
-          {content}
-        </IconLabel>
-      }
-      href={href}
-    />
   );
 }
 

@@ -40,18 +40,13 @@ function getLargest(ranges: ContextRange[]): ContextRange {
   return largest;
 }
 
-export type ContextHighlight = {
-  content: React.ReactNode;
-  suggestion?: string;
-};
-
 export function buildContextHighlight(
   content: string,
   query: string,
   contextWindow: number
-): ContextHighlight {
+): React.ReactNode {
   const ranges = getRanges(content, query);
-  if (ranges.length === 0) return { content };
+  if (ranges.length === 0) return content;
   const largest = getLargest(ranges);
   const snippetStart = Math.max(largest.start - contextWindow, 0);
 
@@ -77,8 +72,5 @@ export function buildContextHighlight(
     result.push(<span key={cursor}>{content.slice(cursor)}</span>);
   }
 
-  return {
-    content: result,
-    suggestion: content.slice(largest.start, largest.end),
-  };
+  return result;
 }
