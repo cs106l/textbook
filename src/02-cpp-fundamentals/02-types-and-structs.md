@@ -169,7 +169,7 @@ This code would work great! But suppose that this is the only time we ever used 
 This code functions equivalently, but returns the built-in type `std::pair` instead. The fields of `std::pair` are `first` and `second`:
 
 ```cpp
-const marquez = "Colonel Aureliano Buendía was to remember that distant afternoon";
+std::string marquez = "Colonel Aureliano Buendía was to remember that distant afternoon";
 
 std::pair<size_t, size_t> result = find(marquez, "a");
 std::cout << result.first << std::endl;
@@ -220,7 +220,7 @@ int main() {
 }
 ```
 
-To be clear, this code is still statically typed! It would be invalid to try to assign anything other than a `std::optional<std::pair<double, double>>` to `soln`, and this code is exactly the same as if we had written `std::optional<std::pair<double, double>>` in place of `auto`. However, we let the compiler do the heavy lifting for us: since it knows what the return type of `solveQuadratic` is, it **infers** (or deduces) the type of `soln`.
+To be clear, this code is still statically typed! It would be invalid to try to assign anything other than a `std::pair<bool, std::pair<double, double>>` to `soln`, and this code is exactly the same as if we had written `std::optional<std::pair<double, double>>` in place of `auto`. However, we let the compiler do the heavy lifting for us: since it knows what the return type of `solveQuadratic` is, it **infers** (or deduces) the type of `soln`.
 
 One area you will often see this used is in <abbr title="A concise way to iterate over all elements in a container or range. E.g. `for (auto elem : v) { }`">range-based for loops</abbr>. For example:
 
