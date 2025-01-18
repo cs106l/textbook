@@ -23,7 +23,7 @@ import { SimpleTreeView } from "@mui/x-tree-view";
 import React from "react";
 import TreeItem from "../tree-item";
 import { newDoc, SearchResult, type SearchIndex } from "./common";
-import { IconLabel, ContextTreeItem } from "./context";
+import { buildContextHighlight } from "./context";
 
 export type SearchClientProps = {
   defaultSuggestions: SearchResult[];
@@ -327,5 +327,55 @@ function SearchResults({
         </Stack>
       )}
     </SimpleTreeView>
+  );
+}
+
+function ContextTreeItem({
+  result,
+  query,
+}: {
+  result: SearchResult;
+  query: string;
+}) {
+  const { content, suggestion } = React.useMemo(
+    () => buildContextHighlight(result.content, query, 20),
+    [result, query]
+  );
+
+  const href = React.useMemo(() => {
+    if (document.fragmentDirective && suggestion)
+      return `${result.path}#:~:text=${suggestion}`;
+    return `${result.path}#${result.slug}`;
+  }, [result, suggestion]);
+
+  return (
+    <TreeItem
+      itemId={`${result.id}`}
+      label={
+        <IconLabel
+          icon={result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />}
+        >
+          {content}
+        </IconLabel>
+      }
+      href={href}
+    />
+  );
+}
+
+function IconLabel({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Stack direction="row" spacing={1} alignItems="center">
+      <SvgIcon sx={{ fontSize: "1.25em" }}>{icon}</SvgIcon>
+      <Typography whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
+        {children}
+      </Typography>
+    </Stack>
   );
 }

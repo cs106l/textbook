@@ -44,16 +44,16 @@ function getLargest(ranges: ContextRange[]): ContextRange {
   return largest;
 }
 
-type HighlightResult = {
+export type ContextHighlight = {
   content: React.ReactNode;
   suggestion?: string;
 };
 
-function buildHighlight(
+export function buildContextHighlight(
   content: string,
   query: string,
   contextWindow: number
-): HighlightResult {
+): ContextHighlight {
   const ranges = getRanges(content, query);
   if (ranges.length === 0) return { content };
   const largest = getLargest(ranges);
@@ -85,52 +85,4 @@ function buildHighlight(
     content: result,
     suggestion: content.slice(largest.start, largest.end),
   };
-}
-
-export function ContextTreeItem({
-  result,
-  query,
-}: {
-  result: SearchResult;
-  query: string;
-}) {
-  const { content } = React.useMemo(
-    () => buildHighlight(result.content, query, 20),
-    [result, query]
-  );
-
-  const href = React.useMemo(() => {
-    return `${result.path}#${result.slug}`;
-  }, [result]);
-
-  return (
-    <TreeItem
-      itemId={`${result.id}`}
-      label={
-        <IconLabel
-          icon={result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />}
-        >
-          {content}
-        </IconLabel>
-      }
-      href={href}
-    />
-  );
-}
-
-export function IconLabel({
-  icon,
-  children,
-}: {
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Stack direction="row" spacing={1} alignItems="center">
-      <SvgIcon sx={{ fontSize: "1.25em" }}>{icon}</SvgIcon>
-      <Typography whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
-        {children}
-      </Typography>
-    </Stack>
-  );
 }
