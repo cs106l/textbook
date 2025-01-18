@@ -21,7 +21,7 @@ import {
 } from "@mui/material";
 import { SimpleTreeView } from "@mui/x-tree-view";
 import React from "react";
-import TreeItem from "../tree-item";
+import TreeItem, { TreeItemClasses } from "../tree-item";
 import { newDoc, SearchResult, type SearchIndex } from "./common";
 import { buildContextHighlight } from "./context";
 
@@ -65,13 +65,14 @@ export default function SearchClient(props: SearchClientProps) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "k") {
         event.preventDefault();
-        openModal();
+        if (open) setOpen(false);
+        else openModal();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [openModal]);
+  }, [open, openModal]);
 
   return (
     <>
@@ -85,10 +86,7 @@ export default function SearchClient(props: SearchClientProps) {
         direction="row"
         color="var(--palette-text-secondary)"
         display={{ xs: "none", sm: "flex" }}
-        onClick={() => {
-          setOpen(true);
-          setQuery("");
-        }}
+        onClick={openModal}
         sx={{ cursor: "text" }}
       >
         <SvgIcon fontSize="inherit">
@@ -293,6 +291,9 @@ function SearchResults({
       onItemSelectionToggle={onClose}
       expandedItems={clusters.map((cluster) => cluster.path)}
       onExpandedItemsChange={() => {}}
+      sx={{
+        [`& .${TreeItemClasses.iconContainer}`]: { display: "none" },
+      }}
     >
       {clusters.map((cluster, index) => (
         <TreeItem
