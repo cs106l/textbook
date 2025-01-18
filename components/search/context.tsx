@@ -1,9 +1,5 @@
-import { Stack, SvgIcon, Typography } from "@mui/material";
 import { escapeRegExp } from "lodash";
 import React from "react";
-import { SearchResult } from "./common";
-import TreeItem from "../tree-item";
-import { Bars3BottomLeftIcon, HashtagIcon } from "@heroicons/react/24/outline";
 
 type ContextRange = { start: number; end: number };
 
