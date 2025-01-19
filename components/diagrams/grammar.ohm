@@ -3,7 +3,7 @@ MemoryStatement {
   Allocation = identifier "=>" Value
   Assignment = identifier Label? "=" Value
 
-  Value = Object | Array | Pointer | Literal
+  Value = Object | Array | Pointer | ArrayString | StringLiteral | literal
   
   Object = identifier? "{" ListOf<Pair, ","> "}"
   Pair = identifier ":" Value
@@ -13,23 +13,37 @@ MemoryStatement {
   Pointer = "&" Location
   Location = identifier (LocationMemberAccess | LocationSubscript)*
   LocationMemberAccess = "." identifier
-  LocationSubscript = "[" digit+ "]"
+  LocationSubscript = "[" number "]"
   
-  Literal = (~("{" | "}" | "[" | "]" | ",") any)+
+  ArrayString = "b" string
+  StringLiteral = string
+
+  string = "\"" char* "\""
+  char = nonEscape | escape
+  nonEscape = ~("\\" | "\"") any
+  escape = "\\" any
+
+  literal = (~("{" | "}" | "[" | "]" | ",") any)+
   
   identifier = (alnum | "_" )+
   Label = "(" identifier ")"
-}
+  
+  number = "-"? (zero | nonzero)
+  zero = "0"
+  nonzero = "1".."9" digit*
 
-MemoryDirective <: MemoryStatement {
-	Directive = LabelDirective | StyleDirective
+  /* 
+   * Directives, e.g. #style, #label
+   */
+  Directive = LabelDirective | StyleDirective
     
-    LabelDirective = "#label" ("stack" | "heap") any+ 
+  LabelDirective = "#label" ("stack" | "heap") any+ 
     
-    StyleDirective = "#style" MultiLocation CSSClass+
+  StyleDirective = "#style" MultiLocation CSSClass+
     
-    MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
-    LocationSlice = "[" digit+ ":" digit+ "]"
+  MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
+  LocationSlice = "[" number? ":" number? LocationStride? "]"
+  LocationStride = ":" number?
     
-    CSSClass = (alnum | "_" | "-")+
+  CSSClass = (alnum | "_" | "-")+
 }

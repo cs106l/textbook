@@ -21,11 +21,10 @@ export type MemoryFrame = {
 export type MemoryAssignment = {
   label?: string;
   variable: string;
-  labelStyle: NodeStyle;
   value: MemoryValue;
 };
 
-export type MemoryValue = { style: NodeStyle } & (
+export type MemoryValue = { style?: NodeStyle } & (
   | LiteralValue
   | ArrayValue
   | ObjectValue
@@ -34,7 +33,7 @@ export type MemoryValue = { style: NodeStyle } & (
 
 export type LiteralValue = {
   kind: "literal";
-  value: "string";
+  value: string;
 };
 
 export type ArrayValue = {
