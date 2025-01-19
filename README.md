@@ -57,6 +57,6 @@ On completion, we plan for the textbook to have the following contents (may chan
 - [ ] 💾 Memory diagrams
 - [ ] 🧜 [Mermaid](https://mermaid.js.org/) diagrams
 - [x] 📗 Chapter list
-- [ ] 🔍 Search
+- [x] 🔍 Search
 - [x] 📚 Table of contents
 - [ ] ▶️ Runnable code

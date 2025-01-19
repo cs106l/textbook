@@ -32,6 +32,7 @@
     "next": "15.1.0",
     "next-mdx-remote": "^5.0.0",
     "object-hash": "^3.0.0",
+    "ohm-js": "^17.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-simple-code-editor": "^0.14.1",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@ohm-js/cli": "^2.0.0",
     "@types/diff": "^6.0.0",
     "@types/lodash": "^4.17.14",
     "@types/node": "^20",

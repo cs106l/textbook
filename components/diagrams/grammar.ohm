@@ -1,0 +1,35 @@
+MemoryStatement {
+  Statement = Allocation | Assignment
+  Allocation = identifier "=>" Value
+  Assignment = identifier Label? "=" Value
+
+  Value = Object | Array | Pointer | Literal
+  
+  Object = identifier? "{" ListOf<Pair, ","> "}"
+  Pair = identifier ":" Value
+
+  Array = "[" ListOf<Value, ","> "]"
+  
+  Pointer = "&" Location
+  Location = identifier (LocationMemberAccess | LocationSubscript)*
+  LocationMemberAccess = "." identifier
+  LocationSubscript = "[" digit+ "]"
+  
+  Literal = (~("{" | "}" | "[" | "]" | ",") any)+
+  
+  identifier = (alnum | "_" )+
+  Label = "(" identifier ")"
+}
+
+MemoryDirective <: MemoryStatement {
+	Directive = LabelDirective | StyleDirective
+    
+    LabelDirective = "#label" ("stack" | "heap") any+ 
+    
+    StyleDirective = "#style" MultiLocation CSSClass+
+    
+    MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
+    LocationSlice = "[" digit+ ":" digit+ "]"
+    
+    CSSClass = (alnum | "_" | "-")+
+}
