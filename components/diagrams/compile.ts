@@ -5,7 +5,10 @@ import {
   MemoryValue,
   NodeStyle,
   Line,
+  PointerValue,
 } from "./types";
+
+import { mergeSx } from "merge-sx";
 
 import grammar from "./grammar.ohm-bundle";
 import { uniqueId } from "lodash";
@@ -161,15 +164,24 @@ function processDirective(diagram: MemoryDiagram, directive: Directive) {
     const values = locateValues(diagram, directive.location, directive.line);
     values.forEach((v) => (v.style = mergeStyles(v.style, directive.style)));
   }
+
+  if (directive.kind === "link") {
+    const values = locateValues(diagram, directive.location, directive.line);
+    values.forEach((v) => {
+      if (v.kind !== "pointer") return;
+      v.linkStyles = directive.style;
+    });
+  }
 }
 
 function mergeStyles(
   existing: NodeStyle | undefined,
   newStyle: NodeStyle
 ): NodeStyle {
-  existing ??= { classNames: [] };
+  existing ??= { className: "", sx: {} };
   return {
-    classNames: [...existing.classNames, ...newStyle.classNames],
+    className: `${existing?.className} ${newStyle.className}`,
+    sx: mergeSx(existing.sx, newStyle.sx),
   };
 }
 
@@ -412,15 +424,9 @@ semantics.addOperation<MemoryValue>("toValue()", {
   },
 
   StringLiteral(str) {
-    const chars: string[] = str.toCharArray();
     return {
       kind: "literal",
-      value: chars
-        .map((c) => {
-          if (c.length > 1) return JSON.parse(`"${c}"`);
-          return c;
-        })
-        .join(""),
+      value: str.toString(),
     };
   },
 
@@ -445,6 +451,15 @@ semantics.addOperation<string>("toString()", {
 
   cssClass(chars) {
     return chars.sourceString;
+  },
+
+  string(_, __, ___) {
+    return this.toCharArray()
+      .map((c: string) => {
+        if (c.length > 1) return JSON.parse(`"${c}"`);
+        return c;
+      })
+      .join("");
   },
 });
 
@@ -525,14 +540,23 @@ semantics.addOperation<MemoryLocationSliced>("toLocationSliced()", {
   LocationSlice(_, b, __, e, ___, s, ____) {
     const start = b.numChildren > 0 ? b.child(0).toNumber() : undefined;
     const end = e.numChildren > 0 ? e.child(0).toNumber() : undefined;
-    const stride = s.numChildren > 0 ? s.child(0).toNumber() : undefined;
+
+    // This accounts for the double optional in the grammar
+    const stride =
+      s.numChildren > 0 && s.child(0).numChildren > 0
+        ? s.child(0).child(0).toNumber()
+        : undefined;
 
     if (stride === 0) throw new Error("slice step cannot be zero");
     return [{ start, end, stride }];
   },
 });
 
-type Directive = { line: Line } & (LabelDirective | StyleDirective);
+type Directive = { line?: Line } & (
+  | LabelDirective
+  | StyleDirective
+  | LinkDirective
+);
 type LabelDirective = {
   kind: "label";
   section: "stack" | "heap";
@@ -542,6 +566,11 @@ type StyleDirective = {
   kind: "style";
   location: MemoryLocationSliced;
   style: NodeStyle;
+};
+type LinkDirective = {
+  kind: "link";
+  location: MemoryLocationSliced;
+  style: NonNullable<PointerValue["linkStyles"]>;
 };
 
 semantics.addOperation<Directive>("toDirective()", {
@@ -553,8 +582,7 @@ semantics.addOperation<Directive>("toDirective()", {
     return {
       kind: "label",
       section: section.sourceString as "stack" | "heap",
-      label: label.sourceString,
-      line: { source: "", no: -1 },
+      label: label.toString(),
     };
   },
 
@@ -562,10 +590,46 @@ semantics.addOperation<Directive>("toDirective()", {
     return {
       kind: "style",
       location: location.toLocationSliced(),
-      style: {
-        classNames: style.children.map((n) => n.toString()),
-      },
-      line: { source: "", no: -1 },
+      style: style.toStyle(),
     };
+  },
+
+  LinkDirective(_, location, style) {
+    return {
+      kind: "link",
+      location: location.toLocationSliced(),
+      style: style.toJSON(),
+    };
+  },
+});
+
+semantics.addOperation<NodeStyle>("toStyle()", {
+  Style_css(classes) {
+    return {
+      className: classes.children.map((n) => n.toString()).join(" "),
+      sx: {},
+    };
+  },
+
+  Style_json(json) {
+    return {
+      className: "",
+      sx: json.toJSON(),
+    };
+  },
+});
+
+semantics.addOperation<object>("toJSON()", {
+  json(_, __, ___) {
+    // If we ever allow compiling diagrams from an external source,
+    // this is a security risk!
+    try {
+      return eval(`(${this.sourceString})`);
+    } catch (e) {
+      console.warn(e);
+      parseError(
+        "Couldn't parse JSON. It's possible there is a malformed style/link directive."
+      );
+    }
   },
 });

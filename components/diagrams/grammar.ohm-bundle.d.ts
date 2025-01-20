@@ -36,11 +36,16 @@ export interface MemoryStatementActionDict<T> extends BaseActionDict<T> {
   zero?: (this: NonterminalNode, arg0: TerminalNode) => T;
   nonzero?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode) => T;
   Directive?: (this: NonterminalNode, arg0: NonterminalNode) => T;
-  LabelDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: TerminalNode, arg2: IterationNode) => T;
-  StyleDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: IterationNode) => T;
+  LabelDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
+  StyleDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
+  Style_css?: (this: NonterminalNode, arg0: IterationNode) => T;
+  Style_json?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  Style?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  LinkDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
   MultiLocation?: (this: NonterminalNode, arg0: NonterminalNode, arg1: IterationNode) => T;
   LocationSlice?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: TerminalNode, arg3: IterationNode, arg4: IterationNode, arg5: IterationNode, arg6: TerminalNode) => T;
   cssClass?: (this: NonterminalNode, arg0: IterationNode) => T;
+  json?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: NonterminalNode) => T;
 }
 
 export interface MemoryStatementSemantics extends Semantics {

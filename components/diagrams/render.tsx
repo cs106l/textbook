@@ -3,18 +3,13 @@
 import React from "react";
 import { PreContent } from "../pre";
 import compileDiagram from "./compile";
-import {
-  ArrayValue,
-  LiteralValue,
-  MemoryDiagram,
-  MemoryStatement,
-  MemoryValue,
-  ObjectValue,
-  PointerValue,
-} from "./types";
+import { MemoryDiagram, MemoryStatement, MemoryValue } from "./types";
 
-import { Box, BoxProps, Typography } from "@mui/material";
+import LeaderLine from "leader-line-new";
+
+import { Box, BoxProps, styled, Typography, useTheme } from "@mui/material";
 import { monospace } from "@/app/theme";
+import { merge } from "lodash";
 
 export default function MemoryDiagramView({ content }: PreContent) {
   const diagram = React.useMemo(() => compileDiagram(content), [content]);
@@ -49,7 +44,7 @@ function StepView({ diagram }: { diagram: MemoryDiagram }) {
             <Frame
               key={idx}
               label={frame.label}
-              includeFieldLabels
+              section="stack"
               statements={frame.statements}
             />
           ))}
@@ -57,7 +52,7 @@ function StepView({ diagram }: { diagram: MemoryDiagram }) {
       )}
       {diagram.heap.statements.length > 0 && (
         <Section label={diagram.heap.label} className="memory-section-heap">
-          <Frame statements={diagram.heap.statements} />
+          <Frame statements={diagram.heap.statements} section="heap" />
         </Section>
       )}
     </Box>
@@ -92,57 +87,32 @@ function Section({
 
 function Frame({
   label,
-  includeFieldLabels,
   statements,
+  section,
 }: {
   label?: string;
-  includeFieldLabels?: boolean;
   statements: MemoryStatement[];
+  section: MemorySection;
 }) {
   return (
-    <Box
-      className="memory-frame"
-      fontFamily={monospace.style.fontFamily}
-      fontSize="0.875rem"
-      whiteSpace="pre"
-    >
-      {label && (
-        <span
-          className="memory-frame-header"
-          style={{ fontFamily: monospace.style.fontFamily }}
-        >
-          {label}
-        </span>
-      )}
-      <Box
-        component="table"
-        sx={{
-          borderCollapse: "collapse",
-          "& > tbody > tr > td": {
-            border: `1px solid ${borderColor}`,
-            paddingX: "4px",
-            paddingY: "2px",
-          },
-        }}
-      >
-        <tbody>
-          {statements.map((s) => (
-            <tr key={s.variable}>
-              {includeFieldLabels && <td>{s.label}</td>}
-              <td>
-                <ValueView depth={0} value={s.value} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Box>
-    </Box>
+    <FieldCollection
+      fields={statements.map((s) => [s.label ?? s.variable, s.value])}
+      section={section}
+      label={label}
+      fieldNames={section === "stack"}
+    />
   );
 }
 
-type ValueProps<TValue> = { value: TValue; depth: number };
+type MemorySection = "stack" | "heap";
 
-function ValueView(props: ValueProps<MemoryValue>) {
+type ValueProps<TKind> = {
+  value: MemoryValue & { kind: TKind };
+  depth: number;
+  section: MemorySection;
+};
+
+function ValueView(props: ValueProps<string>) {
   if (props.value.kind === "array")
     return <ArrayValueView {...props} value={props.value} />;
   if (props.value.kind === "literal")
@@ -154,7 +124,11 @@ function ValueView(props: ValueProps<MemoryValue>) {
   return null;
 }
 
-function ArrayValueView({ value, depth }: ValueProps<ArrayValue>) {
+const Tr = styled("tr")``;
+const Td = styled("td")``;
+const Span = styled("span")``;
+
+function ArrayValueView({ value, depth, section }: ValueProps<"array">) {
   return (
     <Box
       component="table"
@@ -172,11 +146,16 @@ function ArrayValueView({ value, depth }: ValueProps<ArrayValue>) {
       }}
     >
       <tbody>
-        <tr>
+        <tr id={value.id}>
           {value.value.map((elem, idx) => (
-            <td key={idx}>
-              <ValueView value={elem} depth={depth + 1} />
-            </td>
+            <Td
+              key={idx}
+              data-connector="bottom"
+              sx={elem.style?.sx}
+              className={elem.style?.className}
+            >
+              <ValueView value={elem} depth={depth + 1} section={section} />
+            </Td>
           ))}
         </tr>
       </tbody>
@@ -184,18 +163,98 @@ function ArrayValueView({ value, depth }: ValueProps<ArrayValue>) {
   );
 }
 
-function ObjectValueView({ value }: ValueProps<ObjectValue>) {
+function ObjectValueView({ value, section }: ValueProps<"object">) {
+  return (
+    <FieldCollection
+      fields={Object.entries(value.value)}
+      section={section}
+      label={value.type}
+      fieldNames={true}
+    />
+  );
+}
+
+function getSocket(el: HTMLElement | null) {
+  while (el) {
+    const socket = el.getAttribute("data-connector");
+    if (socket) return socket as LeaderLine.SocketType;
+    el = el.parentElement;
+  }
+  return undefined;
+}
+
+function PointerValueView({ value }: ValueProps<"pointer">) {
+  const src = React.useRef<HTMLElement | null>(null);
+  const theme = useTheme();
+
+  // This is to force a re-render of the lines every X ms to make sure they are positioned well
+  const [counter, setCounter] = React.useState(0);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setCounter((c) => c + 1), 200);
+    return () => clearInterval(timer);
+  }, []);
+
+  React.useEffect(() => {
+    if (!value.targetId) return;
+    const dst = document.getElementById(value.targetId);
+    if (!src.current || !dst) return;
+
+    const options: LeaderLine.Options = merge(
+      {
+        color: theme.palette.text.primary,
+        size: 1,
+        endPlugSize: 2,
+        startSocket: getSocket(src.current),
+        endSocket: getSocket(dst),
+        dash: value.linkStyles?.dash ? { len: 8, gap: 4 } : undefined,
+      } as LeaderLine.Options,
+      value.linkStyles
+    );
+
+    const line = new LeaderLine(src.current, dst, options);
+    return () => line.remove();
+  }, [theme, counter, value]);
+
+  return (
+    <Span
+      id={value.id}
+      ref={src}
+      sx={value.style?.sx}
+      className={value.style?.className}
+    >
+      {value.value !== null ? "●" : "⦻"}
+    </Span>
+  );
+}
+
+function LiteralValueView({ value }: ValueProps<"literal">) {
+  return (
+    <Span id={value.id} sx={value.style?.sx} className={value.style?.className}>
+      {value.value}
+    </Span>
+  );
+}
+
+function FieldCollection({
+  fields,
+  section,
+  label,
+  fieldNames,
+}: {
+  fields: [string, MemoryValue][];
+  section: MemorySection;
+  label?: string;
+  fieldNames: boolean;
+}) {
   return (
     <Box
-      className="memory-frame"
       fontFamily={monospace.style.fontFamily}
       fontSize="0.875rem"
       whiteSpace="pre"
     >
-      {value.type && (
-        <span style={{ fontFamily: monospace.style.fontFamily }}>
-          {value.type}
-        </span>
+      {label && (
+        <span style={{ fontFamily: monospace.style.fontFamily }}>{label}</span>
       )}
       <Box
         component="table"
@@ -209,24 +268,20 @@ function ObjectValueView({ value }: ValueProps<ObjectValue>) {
         }}
       >
         <tbody>
-          {Object.entries(value.value).map(([key, val]) => (
-            <tr key={key}>
-              <td>{key}</td>
-              <td>
-                <ValueView depth={0} value={val} />
+          {fields.map(([name, value], idx) => (
+            <Tr
+              key={idx}
+              sx={value.style?.sx}
+              className={value.style?.className}
+            >
+              {fieldNames && <td>{name}</td>}
+              <td data-connector={section === "stack" ? "right" : "left"}>
+                <ValueView depth={0} value={value} section={section} />
               </td>
-            </tr>
+            </Tr>
           ))}
         </tbody>
       </Box>
     </Box>
   );
-}
-
-function PointerValueView({ value }: ValueProps<PointerValue>) {
-  return <span>{value.value !== null ? "●" : "⦻"}</span>;
-}
-
-function LiteralValueView({ value }: ValueProps<LiteralValue>) {
-  return value.value;
 }

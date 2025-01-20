@@ -1,3 +1,6 @@
+import { SxProps } from "@mui/material";
+import LeaderLine from "leader-line-new";
+
 export type MemoryDiagram = {
   stack: StackSection;
   heap: HeapSection;
@@ -54,10 +57,12 @@ export type PointerValue = {
   kind: "pointer";
   value: MemoryLocation | null;
   targetId?: string;
+  linkStyles?: LeaderLine.Options;
 };
 
 export type MemoryLocation = (string | number)[];
 
 export type NodeStyle = {
-  classNames: string[];
+  className: string;
+  sx: SxProps;
 };

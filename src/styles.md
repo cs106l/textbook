@@ -128,7 +128,11 @@ questions:
 ## Memory Diagrams
 
 ```memory
-main:
-x = Vector{size: 1, data: null}
-y => b"Bjarne Stroustrup"
+#label stack "Stream"
+#label heap ""
+
+cin("std::cin") = &data[6]
+data => b"Bjarne Stroustrup"
+
+#style data[:6] highlight
 ```

@@ -26,7 +26,7 @@ MemoryStatement {
   literal = (~("{" | "}" | "[" | "]" | ",") any)+
   
   identifier = (alnum | "_" )+
-  Label = "(" identifier ")"
+  Label = "(" string ")"
   
   number = "-"? (zero | nonzero)
   zero = "0"
@@ -35,14 +35,20 @@ MemoryStatement {
   /* 
    * Directives, e.g. #style, #label
    */
-  Directive = LabelDirective | StyleDirective
+  Directive = LabelDirective | StyleDirective | LinkDirective
     
-  LabelDirective = "#label" ("stack" | "heap") any+ 
+  LabelDirective = "#label" ("stack" | "heap") string
     
-  StyleDirective = "#style" MultiLocation cssClass+
+  StyleDirective = "#style" MultiLocation Style
+  Style 
+    = cssClass+ --css
+    | json      --json
+
+  LinkDirective = "#link" MultiLocation json
     
   MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
   LocationSlice = "[" number? ":" number? (":" number?)? "]"
     
   cssClass = (alnum | "_" | "-")+
+  json = "{" (any)+ end
 }
