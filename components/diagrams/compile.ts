@@ -3,200 +3,87 @@ import {
   MemoryDiagram,
   MemoryLocation,
   MemoryValue,
+  ValueStyle,
+  MemorySubDiagram,
   NodeStyle,
-  Line,
-  PointerValue,
 } from "./types";
 
 import { mergeSx } from "merge-sx";
 
 import grammar from "./grammar.ohm-bundle";
+import { Interval } from "ohm-js";
+import { merge } from "lodash";
 
 export default function compileDiagram(content: string): MemoryDiagram {
-  const lines = getLines(content);
-  const { statements, directives } = splitDirectives(lines);
-
-  const diagram: MemoryDiagram = {
-    stack: { label: "Stack", frames: [] },
-    heap: { label: "Heap", statements: [] },
-  };
-
-  for (const line of statements) {
-    // Check to see if this is the start of a new frame
-    if (line.source.endsWith(":")) {
-      diagram.stack.frames.push({
-        label: line.source.slice(0, -1),
-        statements: [],
-      });
-      continue;
-    }
-
-    const statement = parseStatement(diagram, line);
-
-    if (statement.label) {
-      // Assignment in stack frame
-
-      // Make sure there is a frame available
-      if (diagram.stack.frames.length === 0) {
-        diagram.stack.frames.push({ statements: [] });
-      }
-
-      const frame = diagram.stack.frames[diagram.stack.frames.length - 1];
-      frame.statements.push(statement);
-    } else {
-      // Allocation on heap
-      diagram.heap.statements.push(statement);
-    }
-  }
-
-  analyzeDiagram(diagram);
-
-  for (const directive of directives) {
-    processDirective(diagram, parseDirective(directive));
-  }
-
-  return diagram;
+  const result = grammar.match(content);
+  if (result.failed()) parseError(result.message);
+  return semantics(result).toDiagram();
 }
 
-function getLines(content: string): Line[] {
-  const lines = content.split("\n");
-  return lines
-    .map((line, idx) => ({
-      source: line.trim(),
-      no: idx + 1,
-    }))
-    .filter((l) => l.source.length > 0);
+function parseError(message: string = "", source?: Interval): never {
+  const context = (() => {
+    if (!source) return "";
+    const { lineNum, colNum } = source.getLineAndColumn();
+    return ` at line ${lineNum}, column ${colNum}`;
+  })();
+  throw new Error(`Error parsing diagram${context}:\n\n${message}`);
 }
 
-function splitDirectives(lines: Line[]): {
-  directives: Line[];
-  statements: Line[];
-} {
-  const statements = [...lines];
-  const directives: Line[] = [];
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i].source.startsWith("#"))
-      directives.unshift(statements.splice(i, 1)[0]);
-  }
-  return { directives, statements };
-}
-
-function parseError(message: string = "", line?: Line): never {
-  const lineNo = line ? ` at line ${line.no}` : "";
-  throw new Error(`Error parsing diagram${lineNo}:\n\n${message}`);
-}
-
-function parseStatement(diagram: MemoryDiagram, line: Line): MemoryStatement {
-  const match = grammar.match(line.source, "Statement");
-  if (match.failed()) return parseError(match.message, line);
-
-  const statement: MemoryStatement = semantics(match).toStatement();
-
-  // Verify the uniqueness of this variable
-  const variables = new Set([
-    ...diagram.stack.frames.flatMap((f) => f.statements.map((s) => s.variable)),
-    ...diagram.heap.statements.map((s) => s.variable),
-  ]);
-
-  if (variables.has(statement.variable)) {
-    throw new Error(
-      `Error parsing diagram at line ${line.no}:\n\nVariable ${statement.variable} is already used. ` +
-        `You can change the displayed name of the variable by using a label, ` +
-        `e.g. "${statement.variable}(label) = ..."`
-    );
-  }
-
-  statement.line = line;
-  return statement;
-}
-
-function parseDirective(line: Line): Directive {
-  const match = grammar.match(line.source, "Directive");
-  if (match.failed()) return parseError(match.message, line);
-  const directive: Directive = semantics(match).toDirective();
-  directive.line = line;
-  return directive;
-}
-
-function analyzeDiagram(diagram: MemoryDiagram): void {
-  const analyzeValue = (
-    statement: MemoryStatement,
-    value?: MemoryValue
-  ): void => {
-    if (!value) value = statement.value;
-
-    if (value.kind === "pointer") {
-      if (value.value === null) return;
-      const targets = locateValues(diagram, value.value, statement.line);
-      for (const target of targets) {
-        target.id ??= formatLoc(value.value);
-        value.targetId = target.id;
-      }
-      return;
-    }
-
-    if (value.kind === "array") {
-      value.value.forEach((v) => analyzeValue(statement, v));
-      return;
-    }
-
-    if (value.kind === "object") {
-      Object.values(value.value).forEach((v) => analyzeValue(statement, v));
-      return;
-    }
-  };
-
-  diagram.stack.frames.forEach((f) =>
-    f.statements.forEach((s) => analyzeValue(s))
-  );
-  diagram.heap.statements.forEach((s) => analyzeValue(s));
-}
-
-function processDirective(diagram: MemoryDiagram, directive: Directive) {
+function processDirective(diagram: MemorySubDiagram, directive: Directive, source: Interval) {
   if (directive.kind === "label") {
     if (directive.section === "stack") diagram.stack.label = directive.label;
     else if (directive.section === "heap") diagram.heap.label = directive.label;
+    else if (directive.section === "title") diagram.title = directive.label;
+    else if (directive.section === "subtitle") diagram.subtitle = directive.label;
     return;
   }
 
   if (directive.kind === "style") {
-    const values = locateValues(diagram, directive.location, directive.line);
+    const values = locateValues(diagram, directive.location, source);
     values.forEach((v) => (v.style = mergeStyles(v.style, directive.style)));
-  }
-
-  if (directive.kind === "link") {
-    const values = locateValues(diagram, directive.location, directive.line);
-    values.forEach((v) => {
-      if (v.kind !== "pointer") return;
-      v.linkStyles = directive.style;
-    });
   }
 }
 
 function mergeStyles(
-  existing: NodeStyle | undefined,
-  newStyle: NodeStyle
-): NodeStyle {
-  existing ??= { className: "", sx: {} };
+  existing: ValueStyle | undefined,
+  newStyle: ValueStyle
+): ValueStyle {
+  const mergeNodeStyles = (
+    a?: NodeStyle,
+    b?: NodeStyle
+  ): NodeStyle | undefined => {
+    if (!a) return b;
+    if (!b) return a;
+    return {
+      className: [a.className, b.className]
+        .map((cn) => cn?.trim())
+        .filter(Boolean)
+        .join(" "),
+      sx: mergeSx(a.sx, b.sx),
+    };
+  };
+
   return {
-    className: `${existing?.className} ${newStyle.className}`,
-    sx: mergeSx(existing.sx, newStyle.sx),
+    all: mergeNodeStyles(existing?.all, newStyle.all),
+    label: mergeNodeStyles(existing?.label, newStyle.label),
+    value: mergeNodeStyles(existing?.value, newStyle.value),
+    link: merge(existing?.link, newStyle.link),
   };
 }
 
 function locateValues(
-  diagram: MemoryDiagram,
+  diagram: MemorySubDiagram,
   loc: MemoryLocationSliced,
-  line?: Line
+  source?: Interval
 ): MemoryValue[] {
   const variables = new Map<string, MemoryValue>();
   diagram.stack.frames.forEach((f) =>
     f.statements.forEach((s) => variables.set(s.variable, s.value))
   );
-  diagram.heap.statements.forEach((s) => variables.set(s.variable, s.value));
+  diagram.heap.allocations.forEach((s) => variables.set(s.variable, s.value));
 
   const values: MemoryValue[] = [];
-  locateValuesRec(variables, loc, 0, values, line);
+  locateValuesRec(variables, loc, 0, values, source);
   return values;
 }
 
@@ -205,7 +92,7 @@ function locateValuesRec(
   loc: MemoryLocationSliced,
   idx: number,
   values: MemoryValue[],
-  line?: Line,
+  source?: Interval,
   parentPath: MemoryLocation = [],
   parent?: MemoryValue
 ): void {
@@ -216,7 +103,7 @@ function locateValuesRec(
         "{}",
         formatLoc(parentPath)
       )}`,
-      line
+      source
     );
 
   if (loc.length === 0)
@@ -230,14 +117,14 @@ function locateValuesRec(
     if (!variable)
       return parseError(
         `Variable ${loc[0]} referenced by &${formatLoc(loc)} does not exist`,
-        line
+        source
       );
     return locateValuesRec(
       variables,
       loc,
       idx + 1,
       values,
-      line,
+      source,
       [loc[0]],
       variable
     );
@@ -259,7 +146,7 @@ function locateValuesRec(
       loc,
       idx + 1,
       values,
-      line,
+      source,
       [...parentPath, segment],
       parent.value[segment]
     );
@@ -280,7 +167,7 @@ function locateValuesRec(
       loc,
       idx + 1,
       values,
-      line,
+      source,
       [...parentPath, segment],
       parent.value[segment < 0 ? segment + length : segment]
     );
@@ -314,7 +201,7 @@ function locateValuesRec(
         loc,
         idx + 1,
         values,
-        line,
+        source,
         [...parentPath, sliceIdx],
         parent.value[sliceIdx]
       );
@@ -345,7 +232,179 @@ function formatSlice(l: LocationSlice): string {
   return `[${l.start ?? ""}:${l.end ?? ""}]`;
 }
 
+/* ========================================================================= */
+/* Helper types for compilation                                              */
+/* ========================================================================= */
+
+type Line = StatementLine | DirectiveLine | FrameHeaderLine;
+type StatementLine = { kind: "statement"; statement: MemoryStatement };
+type DirectiveLine = { kind: "directive"; directive: Directive };
+type FrameHeaderLine = { kind: "frame"; label: string };
+
+type MemoryLocationSliced = (string | number | LocationSlice)[];
+type LocationSlice = { start?: number; end?: number; stride?: number };
+
+type Directive = LabelDirective | StyleDirective;
+type LabelDirective = {
+  kind: "label";
+  section: "stack" | "heap" | "title" | "subtitle";
+  label: string;
+};
+type StyleDirective = {
+  kind: "style";
+  location: MemoryLocationSliced;
+  style: ValueStyle;
+};
+
+/* ========================================================================= */
+/* Grammar semantics                                                         */
+/* ========================================================================= */
+
 const semantics = grammar.createSemantics();
+
+semantics.addOperation<MemoryDiagram>("toDiagram()", {
+  Diagram_multi(subdiagrams) {
+    return subdiagrams.children.map((n) => n.toSubDiagram());
+  },
+
+  Diagram_single(lines) {
+    return [lines.toSubDiagram()];
+  },
+});
+
+semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
+  SubDiagram(identifier, _, lines, __) {
+    const diagram: MemorySubDiagram = lines.toSubDiagram();
+    return {
+      title: identifier.toString(),
+      ...diagram
+    };
+  },
+
+  Lines(node) {
+    type LineInfo = { line: Line; source: Interval };
+    const lines: LineInfo[] = node.children.map((n) => ({
+      line: n.toLine(),
+      source: n.source,
+    }));
+
+    const diagram: MemorySubDiagram = {
+      stack: { label: "Stack", frames: [] },
+      heap: { label: "Heap", allocations: [] },
+    };
+
+    const variables = new Set<string>();
+
+    for (const { line, source } of lines) {
+      if (line.kind === "directive") continue;
+
+      // Check to see if this is the start of a new frame
+      if (line.kind === "frame") {
+        diagram.stack.frames.push({
+          label: line.label,
+          statements: [],
+        });
+        continue;
+      }
+
+      // Verify the uniqueness of this variable
+      if (variables.has(line.statement.variable))
+        parseError(
+          `Variable ${line.statement.variable} is already used. ` +
+            `You can change the displayed name of the variable by using a label, ` +
+            `e.g. "${line.statement.variable}(label) = ..."`,
+            source
+        );
+      
+      variables.add(line.statement.variable);
+
+      if (line.statement.label) {
+        // Assignment in stack frame
+        // Make sure there is a frame available
+        if (diagram.stack.frames.length === 0) {
+          diagram.stack.frames.push({ statements: [] });
+        }
+  
+        const frame = diagram.stack.frames[diagram.stack.frames.length - 1];
+        frame.statements.push(line.statement);
+      } else {
+        // Allocation on heap
+        diagram.heap.allocations.push(line.statement);
+      }
+    }
+  
+    /* 
+     * Semantic analysis of diagram statements.
+     * This basically verifies that all pointers point to valid locations.
+     */
+    const analyzeValue = (
+      statement: MemoryStatement,
+      source: Interval,
+      value?: MemoryValue
+    ): void => {
+      if (!value) value = statement.value;
+  
+      if (value.kind === "pointer") {
+        if (value.value === null) return;
+        locateValues(diagram, value.value, source);
+        return;
+      }
+  
+      if (value.kind === "array") {
+        value.value.forEach((v) => analyzeValue(statement, source, v));
+        return;
+      }
+  
+      if (value.kind === "object") {
+        Object.values(value.value).forEach((v) => analyzeValue(statement, source, v));
+        return;
+      }
+    };
+
+    lines.forEach(({ line, source}) => {
+      if (line.kind !== "statement") return;
+      analyzeValue(line.statement, source);
+    });
+  
+    /* 
+     * Process diagram directives
+     * Each directive applies one modification to the diagram
+     */
+    for (const { line, source } of lines) {
+      if (line.kind !== "directive") continue;
+      processDirective(diagram, line.directive, source);
+    }
+
+    return diagram;
+  },
+});
+
+semantics.addOperation<Line>("toLine()", {
+  Line(node) {
+    return node.toLine();
+  },
+
+  Statement(_) {
+    return {
+      kind: "statement",
+      statement: this.toStatement(),
+    };
+  },
+
+  Directive(_) {
+    return {
+      kind: "directive",
+      directive: this.toDirective(),
+    };
+  },
+
+  FrameHeader(identifier, _) {
+    return {
+      kind: "frame",
+      label: identifier.toString(),
+    };
+  },
+});
 
 semantics.addOperation<MemoryStatement>("toStatement()", {
   Statement(node) {
@@ -356,7 +415,7 @@ semantics.addOperation<MemoryStatement>("toStatement()", {
     return {
       variable: identifier.toString(),
       value: value.toValue(),
-      line: { source: "", no: -1 },
+      source: { source: "", no: -1 },
     };
   },
 
@@ -366,7 +425,7 @@ semantics.addOperation<MemoryStatement>("toStatement()", {
       variable,
       label: label.numChildren > 0 ? label.child(0).toString() : variable,
       value: value.toValue(),
-      line: { source: "", no: -1 },
+      source: { source: "", no: -1 },
     };
   },
 });
@@ -504,21 +563,18 @@ semantics.addOperation<MemoryLocation>("toLocation()", {
 });
 
 semantics.addOperation<number>("toNumber()", {
-  number(minus, digits) {
-    return (minus.numChildren > 0 ? -1 : 1) * digits.toNumber();
+  number(node) {
+    return node.toNumber();
   },
 
-  zero(_) {
-    return 0;
+  int(minus, digits) {
+    return parseInt(minus.sourceString + digits.sourceString, 10);
   },
 
-  nonzero(_, __) {
-    return Number.parseInt(this.sourceString);
+  float(minus, integral, __, fractional) {
+    return parseFloat(minus.sourceString + integral.sourceString + "." + fractional.sourceString);
   },
 });
-
-type MemoryLocationSliced = (string | number | LocationSlice)[];
-type LocationSlice = { start?: number; end?: number; stride?: number };
 
 semantics.addOperation<MemoryLocationSliced>("toLocationSliced()", {
   MultiLocation(identifier, rest) {
@@ -551,27 +607,6 @@ semantics.addOperation<MemoryLocationSliced>("toLocationSliced()", {
   },
 });
 
-type Directive = { line?: Line } & (
-  | LabelDirective
-  | StyleDirective
-  | LinkDirective
-);
-type LabelDirective = {
-  kind: "label";
-  section: "stack" | "heap";
-  label: string;
-};
-type StyleDirective = {
-  kind: "style";
-  location: MemoryLocationSliced;
-  style: NodeStyle;
-};
-type LinkDirective = {
-  kind: "link";
-  location: MemoryLocationSliced;
-  style: NonNullable<PointerValue["linkStyles"]>;
-};
-
 semantics.addOperation<Directive>("toDirective()", {
   Directive(node) {
     return node.toDirective();
@@ -592,17 +627,9 @@ semantics.addOperation<Directive>("toDirective()", {
       style: style.toStyle(),
     };
   },
-
-  LinkDirective(_, location, style) {
-    return {
-      kind: "link",
-      location: location.toLocationSliced(),
-      style: style.toJSON(),
-    };
-  },
 });
 
-semantics.addOperation<NodeStyle>("toStyle()", {
+semantics.addOperation<ValueStyle>("toStyle()", {
   Style_css(classes) {
     return {
       className: classes.children.map((n) => n.toString()).join(" "),

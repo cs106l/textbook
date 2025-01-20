@@ -1,7 +1,23 @@
-MemoryStatement {
-  Statement = Allocation | Assignment
+MemoryDiagram {
+  /*
+   * Diagram structure
+   */
+   
+   Diagram 
+    = SubDiagram+ --multi
+    | Lines       --single
+   SubDiagram = identifier "{" Lines "}"
+   Lines = Line*
+   Line = Statement | Directive | FrameHeader
+   FrameHeader = identifier ":"
+
+  /* 
+   * Statements: assignments and allocations
+   */
+  Statement = (Allocation | Assignment)
   Allocation = identifier "=>" Value
   Assignment = identifier Label? "=" Value
+  Label = "(" string ")"
 
   Value = Object | Array | Pointer | ArrayString | StringLiteral | literal
   
@@ -13,42 +29,48 @@ MemoryStatement {
   Pointer = "&" Location
   Location = identifier (LocationMemberAccess | LocationSubscript)*
   LocationMemberAccess = "." identifier
-  LocationSubscript = "[" number "]"
+  LocationSubscript = "[" int "]"
   
   ArrayString = "b" string
   StringLiteral = string
-
-  string = "\"" char* "\""
-  char = nonEscape | escape
-  nonEscape = ~("\\" | "\"") any
-  escape = "\\" any
-
-  literal = (~("{" | "}" | "[" | "]" | ",") any)+
-  
-  identifier = (alnum | "_" )+
-  Label = "(" string ")"
-  
-  number = "-"? (zero | nonzero)
-  zero = "0"
-  nonzero = "1".."9" digit*
+  literal = (~("{" | "}" | "[" | "]" | "," | "\n") any)+
 
   /* 
    * Directives, e.g. #style, #label
    */
-  Directive = LabelDirective | StyleDirective | LinkDirective
+  Directive = LabelDirective | StyleDirective
     
-  LabelDirective = "#label" ("stack" | "heap") string
+  LabelDirective = "#label" ("stack" | "heap" | "title" | "subtitle") string
     
-  StyleDirective = "#style" MultiLocation Style
-  Style 
-    = cssClass+ --css
-    | json      --json
-
-  LinkDirective = "#link" MultiLocation json
-    
+  StyleDirective = "#style" (AllStyle | LinkStyle | LabelStyle | ValueStyle)
+  AllStyle = MultiLocation (CSSClasses | JsonObject)
+  LinkStyle = "link:" MultiLocation JsonObject
+  LabelStyle = "label:" MultiLocation (CSSClasses | JsonObject)
+  ValueStyle = "value:" MultiLocation (CSSClasses | JsonObject)
+  
   MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
-  LocationSlice = "[" number? ":" number? (":" number?)? "]"
+  LocationSlice = "[" int? ":" int? (":" int?)? "]"
     
+  CSSClasses = cssClass+
   cssClass = (alnum | "_" | "-")+
-  json = "{" (any)+ end
+  
+  /*
+   * Utilities and simple JSON parser
+   */ 
+   
+  identifier = (alnum | "_" )+
+  
+  string = "\"" char* "\""
+  char = nonEscape | escape
+  nonEscape = ~("\\" | "\"") any
+  escape = "\\" any
+  
+  number = float | int
+  int = "-"? digit+
+  float = "-"? digit* "." digit+
+  
+  JsonValue = JsonObject | JsonArray | string | number
+  JsonObject = "{" ListOf<JsonPair, ","> "}"
+  JsonArray = "[" ListOf<JsonValue, ","> "]"
+  JsonPair = (identifier | string) ":" JsonValue
 }
