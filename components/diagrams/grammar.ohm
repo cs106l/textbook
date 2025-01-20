@@ -39,11 +39,10 @@ MemoryStatement {
     
   LabelDirective = "#label" ("stack" | "heap") any+ 
     
-  StyleDirective = "#style" MultiLocation CSSClass+
+  StyleDirective = "#style" MultiLocation cssClass+
     
   MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
-  LocationSlice = "[" number? ":" number? LocationStride? "]"
-  LocationStride = ":" number?
+  LocationSlice = "[" number? ":" number? (":" number?)? "]"
     
-  CSSClass = (alnum | "_" | "-")+
+  cssClass = (alnum | "_" | "-")+
 }

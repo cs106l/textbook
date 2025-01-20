@@ -39,9 +39,8 @@ export interface MemoryStatementActionDict<T> extends BaseActionDict<T> {
   LabelDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: TerminalNode, arg2: IterationNode) => T;
   StyleDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: IterationNode) => T;
   MultiLocation?: (this: NonterminalNode, arg0: NonterminalNode, arg1: IterationNode) => T;
-  LocationSlice?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: TerminalNode, arg3: IterationNode, arg4: IterationNode, arg5: TerminalNode) => T;
-  LocationStride?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode) => T;
-  CSSClass?: (this: NonterminalNode, arg0: IterationNode) => T;
+  LocationSlice?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: TerminalNode, arg3: IterationNode, arg4: IterationNode, arg5: IterationNode, arg6: TerminalNode) => T;
+  cssClass?: (this: NonterminalNode, arg0: IterationNode) => T;
 }
 
 export interface MemoryStatementSemantics extends Semantics {

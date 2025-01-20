@@ -10,18 +10,21 @@ export type StackSection = {
 
 export type HeapSection = {
   label: string;
-  assignments: MemoryAssignment[];
+  statements: MemoryStatement[];
 };
 
 export type MemoryFrame = {
   label?: string;
-  assignments: MemoryAssignment[];
+  statements: MemoryStatement[];
 };
 
-export type MemoryAssignment = {
+export type Line = { source: string; no: number };
+
+export type MemoryStatement = {
   label?: string;
   variable: string;
   value: MemoryValue;
+  line: Line;
 };
 
 export type MemoryValue = { style?: NodeStyle } & (
