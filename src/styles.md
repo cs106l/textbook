@@ -131,8 +131,9 @@ questions:
 #label stack "Stream"
 #label heap ""
 
-cin("std::cin") = &data[6]
+cin("std::cin") = &data[6]  
 data => b"Bjarne Stroustrup"
 
 #style data[:6] highlight
+#link cin { dash: { animation: true } }
 ```

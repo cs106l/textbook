@@ -5,11 +5,11 @@ import { PreContent } from "../pre";
 import compileDiagram from "./compile";
 import { MemoryDiagram, MemoryStatement, MemoryValue } from "./types";
 
-import LeaderLine from "leader-line-new";
-
 import { Box, BoxProps, styled, Typography, useTheme } from "@mui/material";
 import { monospace } from "@/app/theme";
 import { merge } from "lodash";
+
+import type LeaderLine from "leader-line-new";
 
 export default function MemoryDiagramView({ content }: PreContent) {
   const diagram = React.useMemo(() => compileDiagram(content), [content]);
@@ -187,15 +187,18 @@ function PointerValueView({ value }: ValueProps<"pointer">) {
   const src = React.useRef<HTMLElement | null>(null);
   const theme = useTheme();
 
-  // This is to force a re-render of the lines every X ms to make sure they are positioned well
-  const [counter, setCounter] = React.useState(0);
-
+  // Unfortunately, attempting to straightforwardly import leader-line-new causes issues with Next.js prerendering
+  // so we dynamically import the library here!
+  const [LL, setLL] = React.useState<typeof LeaderLine | null>(null);
   React.useEffect(() => {
-    const timer = setInterval(() => setCounter((c) => c + 1), 200);
-    return () => clearInterval(timer);
+    (async () => {
+      const LL = (await import("leader-line-new")).default;
+      setLL(() => LL);
+    })();
   }, []);
 
   React.useEffect(() => {
+    if (!LL) return;
     if (!value.targetId) return;
     const dst = document.getElementById(value.targetId);
     if (!src.current || !dst) return;
@@ -212,9 +215,9 @@ function PointerValueView({ value }: ValueProps<"pointer">) {
       value.linkStyles
     );
 
-    const line = new LeaderLine(src.current, dst, options);
+    const line = new LL(src.current, dst, options);
     return () => line.remove();
-  }, [theme, counter, value]);
+  }, [LL, theme, value]);
 
   return (
     <Span
