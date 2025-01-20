@@ -13,17 +13,21 @@ import type LeaderLine from "leader-line-new";
 
 export default function MemoryDiagramView({ content }: PreContent) {
   const diagram = React.useMemo(() => compileDiagram(content), [content]);
+  const diagramRef = React.useRef<HTMLDivElement | null>(null);
   return (
-    <Box
-      marginBottom={2}
-      padding={2}
-      className="memory-diagram"
-      position="relative"
-      overflow="auto"
-      sx={{ backgroundColor: "var(--palette-background-memory)" }}
-    >
-      <StepView diagram={diagram} />
-    </Box>
+    <DiagramContext.Provider value={{ diagramRef: diagramRef }}>
+      <Box
+        marginBottom={2}
+        padding={2}
+        className="memory-diagram"
+        position="relative"
+        overflow="auto"
+        sx={{ backgroundColor: "var(--palette-background-memory)" }}
+        ref={diagramRef}
+      >
+        <StepView diagram={diagram} />
+      </Box>
+    </DiagramContext.Provider>
   );
 }
 
@@ -112,6 +116,15 @@ type ValueProps<TKind> = {
   section: MemorySection;
 };
 
+type DiagramScope = {
+  diagramRef: React.RefObject<HTMLElement | null>;
+};
+
+const DiagramContext = React.createContext<DiagramScope>(
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+  null as any
+);
+
 function ValueView(props: ValueProps<string>) {
   if (props.value.kind === "array")
     return <ArrayValueView {...props} value={props.value} />;
@@ -184,6 +197,7 @@ function getSocket(el: HTMLElement | null) {
 }
 
 function PointerValueView({ value }: ValueProps<"pointer">) {
+  const { diagramRef } = React.useContext(DiagramContext);
   const src = React.useRef<HTMLElement | null>(null);
   const theme = useTheme();
 
@@ -200,6 +214,7 @@ function PointerValueView({ value }: ValueProps<"pointer">) {
   React.useEffect(() => {
     if (!LL) return;
     if (!value.targetId) return;
+    if (!diagramRef.current) return;
     const dst = document.getElementById(value.targetId);
     if (!src.current || !dst) return;
 
@@ -216,7 +231,14 @@ function PointerValueView({ value }: ValueProps<"pointer">) {
     );
 
     const line = new LL(src.current, dst, options);
-    return () => line.remove();
+
+    // Reposition the line on diagram overflow scroll
+    const onScroll = () => line.position();
+    diagramRef.current.addEventListener("scroll", onScroll);
+    return () => {
+      line.remove();
+      diagramRef.current?.removeEventListener("scroll", onScroll);
+    };
   }, [LL, theme, value]);
 
   return (
