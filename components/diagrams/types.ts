@@ -57,15 +57,15 @@ export type ObjectValue = {
 export type PointerValue = {
   kind: "pointer";
   value: MemoryLocation | null;
-  linkStyles?: LeaderLine.Options;
 };
 
 export type MemoryLocation = (string | number)[];
 
 export type ValueStyle = {
-  all?: NodeStyle;
-  label?: NodeStyle;
+  node?: NodeStyle;
   value?: NodeStyle;
+  label?: NodeStyle;
+  row?: NodeStyle;
   link?: LeaderLine.Options;
 };
 

@@ -29,12 +29,17 @@ function parseError(message: string = "", source?: Interval): never {
   throw new Error(`Error parsing diagram${context}:\n\n${message}`);
 }
 
-function processDirective(diagram: MemorySubDiagram, directive: Directive, source: Interval) {
+function processDirective(
+  diagram: MemorySubDiagram,
+  directive: Directive,
+  source: Interval
+) {
   if (directive.kind === "label") {
     if (directive.section === "stack") diagram.stack.label = directive.label;
     else if (directive.section === "heap") diagram.heap.label = directive.label;
     else if (directive.section === "title") diagram.title = directive.label;
-    else if (directive.section === "subtitle") diagram.subtitle = directive.label;
+    else if (directive.section === "subtitle")
+      diagram.subtitle = directive.label;
     return;
   }
 
@@ -44,29 +49,30 @@ function processDirective(diagram: MemorySubDiagram, directive: Directive, sourc
   }
 }
 
+export function mergeNodeStyles(
+  a?: NodeStyle,
+  b?: NodeStyle
+): NodeStyle | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    className: [a.className, b.className]
+      .map((cn) => cn?.trim())
+      .filter(Boolean)
+      .join(" "),
+    sx: mergeSx(a.sx, b.sx),
+  };
+}
+
 function mergeStyles(
   existing: ValueStyle | undefined,
   newStyle: ValueStyle
 ): ValueStyle {
-  const mergeNodeStyles = (
-    a?: NodeStyle,
-    b?: NodeStyle
-  ): NodeStyle | undefined => {
-    if (!a) return b;
-    if (!b) return a;
-    return {
-      className: [a.className, b.className]
-        .map((cn) => cn?.trim())
-        .filter(Boolean)
-        .join(" "),
-      sx: mergeSx(a.sx, b.sx),
-    };
-  };
-
   return {
-    all: mergeNodeStyles(existing?.all, newStyle.all),
-    label: mergeNodeStyles(existing?.label, newStyle.label),
+    node: mergeNodeStyles(existing?.node, newStyle.node),
     value: mergeNodeStyles(existing?.value, newStyle.value),
+    label: mergeNodeStyles(existing?.label, newStyle.label),
+    row: mergeNodeStyles(existing?.row, newStyle.row),
     link: merge(existing?.link, newStyle.link),
   };
 }
@@ -99,9 +105,9 @@ function locateValuesRec(
   /* Failure function if parsing from a parent node fails */
   const fail = (msg: string) =>
     parseError(
-      `In reference &${formatLoc(loc)}, ${msg.replaceAll(
+      `In reference &${formatLocation(loc)}, ${msg.replaceAll(
         "{}",
-        formatLoc(parentPath)
+        formatLocation(parentPath)
       )}`,
       source
     );
@@ -111,12 +117,14 @@ function locateValuesRec(
   if (idx === 0) {
     if (typeof loc[0] !== "string")
       throw new Error(
-        `Internal error: first part of ${formatLoc(loc)} is not a variable`
+        `Internal error: first part of ${formatLocation(loc)} is not a variable`
       );
     const variable = variables.get(loc[0]);
     if (!variable)
       return parseError(
-        `Variable ${loc[0]} referenced by &${formatLoc(loc)} does not exist`,
+        `Variable ${loc[0]} referenced by &${formatLocation(
+          loc
+        )} does not exist`,
         source
       );
     return locateValuesRec(
@@ -213,7 +221,7 @@ function locateValuesRec(
   throw new Error("Internal error: invalid location part/unhandled type");
 }
 
-function formatLoc(loc: MemoryLocationSliced): string {
+export function formatLocation(loc: MemoryLocationSliced): string {
   return (
     loc[0] +
     loc
@@ -276,8 +284,8 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
   SubDiagram(identifier, _, lines, __) {
     const diagram: MemorySubDiagram = lines.toSubDiagram();
     return {
-      title: identifier.toString(),
-      ...diagram
+      title: identifier.asString(),
+      ...diagram,
     };
   },
 
@@ -313,9 +321,9 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
           `Variable ${line.statement.variable} is already used. ` +
             `You can change the displayed name of the variable by using a label, ` +
             `e.g. "${line.statement.variable}(label) = ..."`,
-            source
+          source
         );
-      
+
       variables.add(line.statement.variable);
 
       if (line.statement.label) {
@@ -324,7 +332,7 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
         if (diagram.stack.frames.length === 0) {
           diagram.stack.frames.push({ statements: [] });
         }
-  
+
         const frame = diagram.stack.frames[diagram.stack.frames.length - 1];
         frame.statements.push(line.statement);
       } else {
@@ -332,8 +340,8 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
         diagram.heap.allocations.push(line.statement);
       }
     }
-  
-    /* 
+
+    /*
      * Semantic analysis of diagram statements.
      * This basically verifies that all pointers point to valid locations.
      */
@@ -343,30 +351,32 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
       value?: MemoryValue
     ): void => {
       if (!value) value = statement.value;
-  
+
       if (value.kind === "pointer") {
         if (value.value === null) return;
         locateValues(diagram, value.value, source);
         return;
       }
-  
+
       if (value.kind === "array") {
         value.value.forEach((v) => analyzeValue(statement, source, v));
         return;
       }
-  
+
       if (value.kind === "object") {
-        Object.values(value.value).forEach((v) => analyzeValue(statement, source, v));
+        Object.values(value.value).forEach((v) =>
+          analyzeValue(statement, source, v)
+        );
         return;
       }
     };
 
-    lines.forEach(({ line, source}) => {
+    lines.forEach(({ line, source }) => {
       if (line.kind !== "statement") return;
       analyzeValue(line.statement, source);
     });
-  
-    /* 
+
+    /*
      * Process diagram directives
      * Each directive applies one modification to the diagram
      */
@@ -401,7 +411,7 @@ semantics.addOperation<Line>("toLine()", {
   FrameHeader(identifier, _) {
     return {
       kind: "frame",
-      label: identifier.toString(),
+      label: identifier.asString(),
     };
   },
 });
@@ -413,17 +423,17 @@ semantics.addOperation<MemoryStatement>("toStatement()", {
 
   Allocation(identifier, _, value) {
     return {
-      variable: identifier.toString(),
+      variable: identifier.asString(),
       value: value.toValue(),
       source: { source: "", no: -1 },
     };
   },
 
   Assignment(identifier, label, _, value) {
-    const variable = identifier.toString();
+    const variable = identifier.asString();
     return {
       variable,
-      label: label.numChildren > 0 ? label.child(0).toString() : variable,
+      label: label.numChildren > 0 ? label.child(0).asString() : variable,
       value: value.toValue(),
       source: { source: "", no: -1 },
     };
@@ -451,7 +461,7 @@ semantics.addOperation<MemoryValue>("toValue()", {
 
     return {
       kind: "object",
-      type: type.numChildren > 0 ? type.child(0).toString() : undefined,
+      type: type.numChildren > 0 ? type.child(0).asString() : undefined,
       value: Object.fromEntries(pairs),
     };
   },
@@ -484,7 +494,7 @@ semantics.addOperation<MemoryValue>("toValue()", {
   StringLiteral(str) {
     return {
       kind: "literal",
-      value: str.toString(),
+      value: str.asString(),
     };
   },
 
@@ -498,13 +508,13 @@ semantics.addOperation<MemoryValue>("toValue()", {
   },
 });
 
-semantics.addOperation<string>("toString()", {
+semantics.addOperation<string>("asString()", {
   identifier(chars) {
     return chars.sourceString;
   },
 
   Label(_, identifier, __) {
-    return identifier.toString();
+    return identifier.asString();
   },
 
   cssClass(chars) {
@@ -543,18 +553,18 @@ semantics.addOperation<string[]>("toCharArray()", {
 
 semantics.addOperation<[string, MemoryValue]>("toPair()", {
   Pair(identifier, _, value) {
-    return [identifier.toString(), value.toValue()];
+    return [identifier.asString(), value.toValue()];
   },
 });
 
 semantics.addOperation<MemoryLocation>("toLocation()", {
   Location(identifier, rest) {
     const locs = rest.children.flatMap((n) => n.toLocation()) as MemoryLocation;
-    return [identifier.toString(), ...locs];
+    return [identifier.asString(), ...locs];
   },
 
   LocationMemberAccess(_, identifier) {
-    return [identifier.toString()];
+    return [identifier.asString()];
   },
 
   LocationSubscript(_, index, __) {
@@ -572,7 +582,9 @@ semantics.addOperation<number>("toNumber()", {
   },
 
   float(minus, integral, __, fractional) {
-    return parseFloat(minus.sourceString + integral.sourceString + "." + fractional.sourceString);
+    return parseFloat(
+      minus.sourceString + integral.sourceString + "." + fractional.sourceString
+    );
   },
 });
 
@@ -581,11 +593,11 @@ semantics.addOperation<MemoryLocationSliced>("toLocationSliced()", {
     const locs = rest.children.flatMap((n) =>
       n.toLocationSliced()
     ) as MemoryLocationSliced;
-    return [identifier.toString(), ...locs];
+    return [identifier.asString(), ...locs];
   },
 
   LocationMemberAccess(_, identifier) {
-    return [identifier.toString()];
+    return [identifier.asString()];
   },
 
   LocationSubscript(_, index, __) {
@@ -616,46 +628,79 @@ semantics.addOperation<Directive>("toDirective()", {
     return {
       kind: "label",
       section: section.sourceString as "stack" | "heap",
-      label: label.toString(),
+      label: label.asString(),
     };
   },
 
-  StyleDirective(_, location, style) {
+  StyleDirective(_, style) {
+    return style.toDirective();
+  },
+
+  NodeStyles(kindNode, _, location, styles) {
+    const kind = ((kindNode.numChildren > 0 &&
+      kindNode.child(0).sourceString) ||
+      "node") as keyof ValueStyle;
     return {
       kind: "style",
       location: location.toLocationSliced(),
-      style: style.toStyle(),
+      style: {
+        [kind]: styles.toNodeStyle(),
+      },
+    };
+  },
+
+  LinkStyle(_, location, style) {
+    return {
+      kind: "style",
+      location: location.toLocationSliced(),
+      style: {
+        link: style.toJSON(),
+      },
     };
   },
 });
 
-semantics.addOperation<ValueStyle>("toStyle()", {
-  Style_css(classes) {
+semantics.addOperation<NodeStyle>("toNodeStyle()", {
+  JsonObject(_, __, ___) {
     return {
-      className: classes.children.map((n) => n.toString()).join(" "),
-      sx: {},
+      sx: this.toJSON(),
     };
   },
 
-  Style_json(json) {
+  CSSClasses(classes) {
     return {
-      className: "",
-      sx: json.toJSON(),
+      className: classes.children.map((n) => n.asString()).join(" "),
     };
   },
 });
 
-semantics.addOperation<object>("toJSON()", {
-  json(_, __, ___) {
-    // If we ever allow compiling diagrams from an external source,
-    // this is a security risk!
-    try {
-      return eval(`(${this.sourceString})`);
-    } catch (e) {
-      console.warn(e);
-      parseError(
-        "Couldn't parse JSON. It's possible there is a malformed style/link directive."
-      );
-    }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+semantics.addOperation<any>("toJSON()", {
+  JsonValue(node) {
+    return node.toJSON();
+  },
+
+  JsonObject(_, pairs, __) {
+    return Object.fromEntries(
+      pairs
+        .asIteration()
+        .children.map((n) => [n.child(0).asString(), n.child(2).toJSON()])
+    );
+  },
+
+  JsonArray(_, elements, __) {
+    return elements.asIteration().children.map((n) => n.toJSON());
+  },
+
+  JsonBool(node) {
+    return node.sourceString === "true";
+  },
+
+  string(_, __, ___) {
+    return this.asString();
+  },
+
+  number(_) {
+    return this.toNumber();
   },
 });

@@ -137,6 +137,12 @@ d1 {
 
   #style data[:6] highlight
   #style link:cin { dash: { animation: true } }
+  #style label:cin { color: "red" }
 }
 
+d2 {
+  main:
+  foo = &data
+  data => [1,2,3]
+}
 ```

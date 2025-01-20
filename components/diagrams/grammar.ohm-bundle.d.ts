@@ -37,10 +37,8 @@ export interface MemoryDiagramActionDict<T> extends BaseActionDict<T> {
   Directive?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   LabelDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
   StyleDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode) => T;
-  AllStyle?: (this: NonterminalNode, arg0: NonterminalNode, arg1: NonterminalNode) => T;
+  NodeStyles?: (this: NonterminalNode, arg0: IterationNode, arg1: IterationNode, arg2: NonterminalNode, arg3: NonterminalNode) => T;
   LinkStyle?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
-  LabelStyle?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
-  ValueStyle?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
   MultiLocation?: (this: NonterminalNode, arg0: NonterminalNode, arg1: IterationNode) => T;
   LocationSlice?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: TerminalNode, arg3: IterationNode, arg4: IterationNode, arg5: IterationNode, arg6: TerminalNode) => T;
   CSSClasses?: (this: NonterminalNode, arg0: IterationNode) => T;
@@ -57,6 +55,7 @@ export interface MemoryDiagramActionDict<T> extends BaseActionDict<T> {
   JsonObject?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
   JsonArray?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
   JsonPair?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
+  JsonBool?: (this: NonterminalNode, arg0: TerminalNode) => T;
 }
 
 export interface MemoryDiagramSemantics extends Semantics {

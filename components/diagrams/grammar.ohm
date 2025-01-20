@@ -42,11 +42,9 @@ MemoryDiagram {
     
   LabelDirective = "#label" ("stack" | "heap" | "title" | "subtitle") string
     
-  StyleDirective = "#style" (AllStyle | LinkStyle | LabelStyle | ValueStyle)
-  AllStyle = MultiLocation (CSSClasses | JsonObject)
+  StyleDirective = "#style" (NodeStyles | LinkStyle)
+  NodeStyles = (("value" | "label" | "row") ":")? MultiLocation (CSSClasses | JsonObject)
   LinkStyle = "link:" MultiLocation JsonObject
-  LabelStyle = "label:" MultiLocation (CSSClasses | JsonObject)
-  ValueStyle = "value:" MultiLocation (CSSClasses | JsonObject)
   
   MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
   LocationSlice = "[" int? ":" int? (":" int?)? "]"
@@ -69,8 +67,9 @@ MemoryDiagram {
   int = "-"? digit+
   float = "-"? digit* "." digit+
   
-  JsonValue = JsonObject | JsonArray | string | number
+  JsonValue = JsonObject | JsonArray | JsonBool | string | number
   JsonObject = "{" ListOf<JsonPair, ","> "}"
   JsonArray = "[" ListOf<JsonValue, ","> "]"
   JsonPair = (identifier | string) ":" JsonValue
+  JsonBool = "true" | "false"
 }
