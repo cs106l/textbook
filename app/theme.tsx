@@ -4,15 +4,16 @@ import { alpha, createTheme } from "@mui/material/styles";
 import { TypographyStyleOptions } from "@mui/material/styles/createTypography";
 import NextLink, { LinkProps as NextLinkProps } from "next/link";
 
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import { Fira_Code, Space_Grotesk } from "next/font/google";
 import React from "react";
+import { grey } from "@mui/material/colors";
 
 export const font = Space_Grotesk({
   weight: ["300", "400", "500", "700"],
   subsets: ["latin-ext"],
 });
 
-export const monospace = IBM_Plex_Mono({
+export const monospace = Fira_Code({
   weight: ["400"],
   subsets: ["latin-ext"],
 });
@@ -28,6 +29,11 @@ declare module "@mui/material/styles" {
   interface TypeBackground {
     code: string;
     header: string;
+    memory: string;
+  }
+
+  interface PaletteOptions {
+    memory: string;
   }
 }
 
@@ -45,8 +51,10 @@ const theme = createTheme({
         background: {
           code: "#f6f7f6",
           header: alpha("#ffffff", 0.8),
+          memory: "#f6f7f680",
         },
         divider: "#e0e0e0",
+        memory: grey[400],
       },
     },
     dark: {
@@ -54,8 +62,10 @@ const theme = createTheme({
         background: {
           code: "#1d1f21",
           header: alpha("#000000", 0.8),
+          memory: "#1d1f2180",
         },
         divider: "#424242",
+        memory: grey[800],
       },
     },
   },
@@ -73,19 +83,19 @@ const theme = createTheme({
     h6: heading(0.85),
     allVariants: {
       letterSpacing: "0.025em",
-      lineHeight: "1.75"
-    }
+      lineHeight: "1.75",
+    },
   },
   components: {
     MuiCssBaseline: {
       styleOverrides: (theme) => ({
         html: {
-          overflowY: "scroll"
+          overflowY: "scroll",
         },
         body: {
           backgroundColor: "var(--palette-common-background)",
           color: "var(--palette-common-onBackground)",
-          overscrollBehavior: "none"
+          overscrollBehavior: "none",
         },
         code: {
           fontFamily: monospace.style.fontFamily,

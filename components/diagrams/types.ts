@@ -1,3 +1,6 @@
+import { SxProps } from "@mui/material";
+import LeaderLine from "leader-line-new";
+
 export type MemoryDiagram = {
   stack: StackSection;
   heap: HeapSection;
@@ -10,22 +13,24 @@ export type StackSection = {
 
 export type HeapSection = {
   label: string;
-  assignments: MemoryAssignment[];
+  statements: MemoryStatement[];
 };
 
 export type MemoryFrame = {
   label?: string;
-  assignments: MemoryAssignment[];
+  statements: MemoryStatement[];
 };
 
-export type MemoryAssignment = {
+export type Line = { source: string; no: number };
+
+export type MemoryStatement = {
   label?: string;
   variable: string;
-  labelStyle: NodeStyle;
   value: MemoryValue;
+  line?: Line;
 };
 
-export type MemoryValue = { style: NodeStyle } & (
+export type MemoryValue = { style?: NodeStyle; id?: string } & (
   | LiteralValue
   | ArrayValue
   | ObjectValue
@@ -34,7 +39,7 @@ export type MemoryValue = { style: NodeStyle } & (
 
 export type LiteralValue = {
   kind: "literal";
-  value: "string";
+  value: string;
 };
 
 export type ArrayValue = {
@@ -51,10 +56,13 @@ export type ObjectValue = {
 export type PointerValue = {
   kind: "pointer";
   value: MemoryLocation | null;
+  targetId?: string;
+  linkStyles?: LeaderLine.Options;
 };
 
 export type MemoryLocation = (string | number)[];
 
 export type NodeStyle = {
-  classNames: string[];
+  className: string;
+  sx: SxProps;
 };
