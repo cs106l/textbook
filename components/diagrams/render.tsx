@@ -233,13 +233,15 @@ function PointerValueView({ value }: ValueProps<"pointer">) {
     const line = new LL(src.current, dst, options);
 
     // Reposition the line on diagram overflow scroll
+    const diagram = diagramRef.current;
     const onScroll = () => line.position();
-    diagramRef.current.addEventListener("scroll", onScroll);
+    diagram.addEventListener("scroll", onScroll);
+
     return () => {
       line.remove();
-      diagramRef.current?.removeEventListener("scroll", onScroll);
+      diagram.removeEventListener("scroll", onScroll);
     };
-  }, [LL, theme, value]);
+  }, [LL, theme, value, diagramRef]);
 
   return (
     <Span
