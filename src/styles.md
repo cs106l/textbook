@@ -125,12 +125,10 @@ questions:
       a2: This is a single distractor
 ```
 
-A quiz question is uniquely determined by the combination of:
+## Memory Diagrams
 
-- The `name` of its containing quiz
-- The `type` of the question
-- The keyset of its `answers`
-- The keyset of its `distractors`
-
-Changing any one of (e.g. changing the quiz name, adding/removing a response) will mean that the quiz is substantively different.
-
+```memory
+main:
+x = Vector{size: 1, data: null}
+y => b"Bjarne Stroustrup"
+```

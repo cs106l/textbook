@@ -24,10 +24,10 @@ export type MemoryStatement = {
   label?: string;
   variable: string;
   value: MemoryValue;
-  line: Line;
+  line?: Line;
 };
 
-export type MemoryValue = { style?: NodeStyle } & (
+export type MemoryValue = { style?: NodeStyle; id?: string } & (
   | LiteralValue
   | ArrayValue
   | ObjectValue
@@ -53,6 +53,7 @@ export type ObjectValue = {
 export type PointerValue = {
   kind: "pointer";
   value: MemoryLocation | null;
+  targetId?: string;
 };
 
 export type MemoryLocation = (string | number)[];

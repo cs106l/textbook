@@ -8,6 +8,7 @@ import {
 } from "./types";
 
 import grammar from "./grammar.ohm-bundle";
+import { uniqueId } from "lodash";
 
 export default function compileDiagram(content: string): MemoryDiagram {
   const lines = getLines(content);
@@ -78,13 +79,14 @@ function splitDirectives(lines: Line[]): {
   return { directives, statements };
 }
 
-function parseError(line: Line, message: string = ""): never {
-  throw new Error(`Error parsing diagram at line ${line.no}:\n\n${message}`);
+function parseError(message: string = "", line?: Line): never {
+  const lineNo = line ? ` at line ${line.no}` : "";
+  throw new Error(`Error parsing diagram${lineNo}:\n\n${message}`);
 }
 
 function parseStatement(diagram: MemoryDiagram, line: Line): MemoryStatement {
   const match = grammar.match(line.source, "Statement");
-  if (match.failed()) return parseError(line, match.message);
+  if (match.failed()) return parseError(match.message, line);
 
   const statement: MemoryStatement = semantics(match).toStatement();
 
@@ -108,7 +110,7 @@ function parseStatement(diagram: MemoryDiagram, line: Line): MemoryStatement {
 
 function parseDirective(line: Line): Directive {
   const match = grammar.match(line.source, "Directive");
-  if (match.failed()) return parseError(line, match.message);
+  if (match.failed()) return parseError(match.message, line);
   const directive: Directive = semantics(match).toDirective();
   directive.line = line;
   return directive;
@@ -123,7 +125,11 @@ function analyzeDiagram(diagram: MemoryDiagram): void {
 
     if (value.kind === "pointer") {
       if (value.value === null) return;
-      locateValues(diagram, statement.line, value.value);
+      const targets = locateValues(diagram, value.value, statement.line);
+      for (const target of targets) {
+        target.id ??= uniqueId("diagram-");
+        value.targetId = target.id;
+      }
       return;
     }
 
@@ -152,7 +158,7 @@ function processDirective(diagram: MemoryDiagram, directive: Directive) {
   }
 
   if (directive.kind === "style") {
-    const values = locateValues(diagram, directive.line, directive.location);
+    const values = locateValues(diagram, directive.location, directive.line);
     values.forEach((v) => (v.style = mergeStyles(v.style, directive.style)));
   }
 }
@@ -169,8 +175,8 @@ function mergeStyles(
 
 function locateValues(
   diagram: MemoryDiagram,
-  line: Line,
-  loc: MemoryLocationSliced
+  loc: MemoryLocationSliced,
+  line?: Line
 ): MemoryValue[] {
   const variables = new Map<string, MemoryValue>();
   diagram.stack.frames.forEach((f) =>
@@ -179,27 +185,27 @@ function locateValues(
   diagram.heap.statements.forEach((s) => variables.set(s.variable, s.value));
 
   const values: MemoryValue[] = [];
-  locateValuesRec(line, variables, loc, 0, values);
+  locateValuesRec(variables, loc, 0, values, line);
   return values;
 }
 
 function locateValuesRec(
-  line: Line,
   variables: Map<string, MemoryValue>,
   loc: MemoryLocationSliced,
   idx: number,
   values: MemoryValue[],
+  line?: Line,
   parentPath: MemoryLocation = [],
   parent?: MemoryValue
 ): void {
   /* Failure function if parsing from a parent node fails */
   const fail = (msg: string) =>
     parseError(
-      line,
       `In reference &${formatLoc(loc)}, ${msg.replaceAll(
         "{}",
         formatLoc(parentPath)
-      )}`
+      )}`,
+      line
     );
 
   if (loc.length === 0)
@@ -212,15 +218,15 @@ function locateValuesRec(
     const variable = variables.get(loc[0]);
     if (!variable)
       return parseError(
-        line,
-        `Variable ${loc[0]} referenced by &${formatLoc(loc)} does not exist`
+        `Variable ${loc[0]} referenced by &${formatLoc(loc)} does not exist`,
+        line
       );
     return locateValuesRec(
-      line,
       variables,
       loc,
       idx + 1,
       values,
+      line,
       [loc[0]],
       variable
     );
@@ -229,7 +235,7 @@ function locateValuesRec(
   if (!parent) throw new Error("Internal error: missing parent");
   if (idx >= loc.length) return void values.push(parent);
 
-  let segment = loc[idx];
+  const segment = loc[idx];
 
   /* Member access */
   if (typeof segment === "string") {
@@ -238,11 +244,11 @@ function locateValuesRec(
     if (!Object.keys(parent.value).includes(segment))
       return fail(`field "${segment}" does not exist in object {}`);
     return locateValuesRec(
-      line,
       variables,
       loc,
       idx + 1,
       values,
+      line,
       [...parentPath, segment],
       parent.value[segment]
     );
@@ -259,11 +265,11 @@ function locateValuesRec(
         `index ${segment} is out of bounds for array {} of length ${length}`
       );
     return locateValuesRec(
-      line,
       variables,
       loc,
       idx + 1,
       values,
+      line,
       [...parentPath, segment],
       parent.value[segment < 0 ? segment + length : segment]
     );
@@ -293,11 +299,11 @@ function locateValuesRec(
 
     for (const sliceIdx of indices) {
       locateValuesRec(
-        line,
         variables,
         loc,
         idx + 1,
         values,
+        line,
         [...parentPath, sliceIdx],
         parent.value[sliceIdx]
       );

@@ -1,9 +1,10 @@
 import React from "react";
 import CodeBlock from "./code";
 import QuizView from "./quiz";
+import MemoryDiagramView from "./diagrams/render";
 
 export type PreContent = {
-  type: "code" | "quiz";
+  type: "code" | "quiz" | "memory";
   options: string[];
   content: string;
 };
@@ -15,6 +16,7 @@ export function getOptions(
   const components = lang.split(",");
   if (components[0] === "yaml" && components.includes("quiz"))
     return ["quiz", components];
+  if (components[0] === "memory") return ["memory", components];
   return ["code", components];
 }
 
@@ -52,5 +54,6 @@ export default function Pre({ children }: { children: React.ReactNode }) {
 
   if (content.type === "code") return <CodeBlock {...content} />;
   if (content.type === "quiz") return <QuizView {...content} />;
+  if (content.type === "memory") return <MemoryDiagramView {...content} />;
   return null;
 }
