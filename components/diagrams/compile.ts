@@ -11,7 +11,6 @@ import {
 import { mergeSx } from "merge-sx";
 
 import grammar from "./grammar.ohm-bundle";
-import { uniqueId } from "lodash";
 
 export default function compileDiagram(content: string): MemoryDiagram {
   const lines = getLines(content);
@@ -130,7 +129,7 @@ function analyzeDiagram(diagram: MemoryDiagram): void {
       if (value.value === null) return;
       const targets = locateValues(diagram, value.value, statement.line);
       for (const target of targets) {
-        target.id ??= uniqueId("diagram-");
+        target.id ??= formatLoc(value.value);
         value.targetId = target.id;
       }
       return;
