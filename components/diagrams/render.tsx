@@ -13,49 +13,58 @@ import type LeaderLine from "leader-line-new";
 
 export default function MemoryDiagramView({ content }: PreContent) {
   const diagram = React.useMemo(() => compileDiagram(content), [content]);
+  const diagramRef = React.useRef<HTMLDivElement | null>(null);
   return (
-    <Box
-      marginBottom={2}
-      padding={2}
-      className="memory-diagram"
-      position="relative"
-      overflow="auto"
-      sx={{ backgroundColor: "var(--palette-background-memory)" }}
-    >
-      <StepView diagram={diagram} />
-    </Box>
+    <DiagramContext.Provider value={{ diagramRef: diagramRef }}>
+      <Box
+        marginBottom={2}
+        padding={2}
+        className="memory-diagram"
+        position="relative"
+        overflow="auto"
+        sx={{ backgroundColor: "var(--palette-background-memory)" }}
+        ref={diagramRef}
+      >
+        <StepView diagram={diagram} />
+      </Box>
+    </DiagramContext.Provider>
   );
 }
 
 const borderColor = "var(--palette-memory)";
 
 function StepView({ diagram }: { diagram: MemoryDiagram }) {
+  const context = React.useContext(DiagramContext);
+  const stepRef = React.useRef<HTMLElement | null>(null);
   return (
-    <Box
-      className="memory-step"
-      display="flex"
-      gap="60px"
-      fontSize="0.95rem"
-      lineHeight={1.25}
-    >
-      {diagram.stack.frames.length > 0 && (
-        <Section label={diagram.stack.label} className="memory-section-stack">
-          {diagram.stack.frames.map((frame, idx) => (
-            <Frame
-              key={idx}
-              label={frame.label}
-              section="stack"
-              statements={frame.statements}
-            />
-          ))}
-        </Section>
-      )}
-      {diagram.heap.statements.length > 0 && (
-        <Section label={diagram.heap.label} className="memory-section-heap">
-          <Frame statements={diagram.heap.statements} section="heap" />
-        </Section>
-      )}
-    </Box>
+    <DiagramContext.Provider value={{ ...context, stepRef }}>
+      <Box
+        className="memory-step"
+        display="flex"
+        gap="60px"
+        fontSize="0.95rem"
+        lineHeight={1.25}
+        ref={stepRef}
+      >
+        {diagram.stack.frames.length > 0 && (
+          <Section label={diagram.stack.label} className="memory-section-stack">
+            {diagram.stack.frames.map((frame, idx) => (
+              <Frame
+                key={idx}
+                label={frame.label}
+                section="stack"
+                statements={frame.statements}
+              />
+            ))}
+          </Section>
+        )}
+        {diagram.heap.statements.length > 0 && (
+          <Section label={diagram.heap.label} className="memory-section-heap">
+            <Frame statements={diagram.heap.statements} section="heap" />
+          </Section>
+        )}
+      </Box>
+    </DiagramContext.Provider>
   );
 }
 
@@ -112,6 +121,16 @@ type ValueProps<TKind> = {
   section: MemorySection;
 };
 
+type DiagramScope = {
+  diagramRef: React.RefObject<HTMLElement | null>;
+  stepRef?: React.RefObject<HTMLElement | null>;
+};
+
+const DiagramContext = React.createContext<DiagramScope>(
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+  null as any
+);
+
 function ValueView(props: ValueProps<string>) {
   if (props.value.kind === "array")
     return <ArrayValueView {...props} value={props.value} />;
@@ -146,7 +165,7 @@ function ArrayValueView({ value, depth, section }: ValueProps<"array">) {
       }}
     >
       <tbody>
-        <tr id={value.id}>
+        <tr data-ref={value.id}>
           {value.value.map((elem, idx) => (
             <Td
               key={idx}
@@ -170,11 +189,12 @@ function ObjectValueView({ value, section }: ValueProps<"object">) {
       section={section}
       label={value.type}
       fieldNames={true}
+      id={value.id}
     />
   );
 }
 
-function getSocket(el: HTMLElement | null) {
+function getSocket(el: Element | null) {
   while (el) {
     const socket = el.getAttribute("data-connector");
     if (socket) return socket as LeaderLine.SocketType;
@@ -184,6 +204,7 @@ function getSocket(el: HTMLElement | null) {
 }
 
 function PointerValueView({ value }: ValueProps<"pointer">) {
+  const { diagramRef, stepRef } = React.useContext(DiagramContext);
   const src = React.useRef<HTMLElement | null>(null);
   const theme = useTheme();
 
@@ -198,9 +219,9 @@ function PointerValueView({ value }: ValueProps<"pointer">) {
   }, []);
 
   React.useEffect(() => {
-    if (!LL) return;
-    if (!value.targetId) return;
-    const dst = document.getElementById(value.targetId);
+    if (!LL || !value.targetId || !diagramRef.current || !stepRef?.current)
+      return;
+    const dst = stepRef.current.querySelector(`[data-ref="${value.targetId}"]`);
     if (!src.current || !dst) return;
 
     const options: LeaderLine.Options = merge(
@@ -216,12 +237,21 @@ function PointerValueView({ value }: ValueProps<"pointer">) {
     );
 
     const line = new LL(src.current, dst, options);
-    return () => line.remove();
-  }, [LL, theme, value]);
+
+    // Reposition the line on diagram overflow scroll
+    const diagram = diagramRef.current;
+    const onScroll = () => line.position();
+    diagram.addEventListener("scroll", onScroll);
+
+    return () => {
+      line.remove();
+      diagram.removeEventListener("scroll", onScroll);
+    };
+  }, [LL, theme, value, diagramRef, stepRef]);
 
   return (
     <Span
-      id={value.id}
+      data-ref={value.id}
       ref={src}
       sx={value.style?.sx}
       className={value.style?.className}
@@ -233,7 +263,11 @@ function PointerValueView({ value }: ValueProps<"pointer">) {
 
 function LiteralValueView({ value }: ValueProps<"literal">) {
   return (
-    <Span id={value.id} sx={value.style?.sx} className={value.style?.className}>
+    <Span
+      data-ref={value.id}
+      sx={value.style?.sx}
+      className={value.style?.className}
+    >
       {value.value}
     </Span>
   );
@@ -244,11 +278,13 @@ function FieldCollection({
   section,
   label,
   fieldNames,
+  id,
 }: {
   fields: [string, MemoryValue][];
   section: MemorySection;
   label?: string;
   fieldNames: boolean;
+  id?: string;
 }) {
   return (
     <Box
@@ -269,6 +305,7 @@ function FieldCollection({
             paddingY: "2px",
           },
         }}
+        data-ref={id}
       >
         <tbody>
           {fields.map(([name, value], idx) => (
