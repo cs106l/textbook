@@ -11,10 +11,18 @@ import {
   TerminalNode
 } from 'ohm-js';
 
-export interface MemoryStatementActionDict<T> extends BaseActionDict<T> {
+export interface MemoryDiagramActionDict<T> extends BaseActionDict<T> {
+  Diagram_multi?: (this: NonterminalNode, arg0: IterationNode) => T;
+  Diagram_single?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  Diagram?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  SubDiagram?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: NonterminalNode, arg3: TerminalNode) => T;
+  Lines?: (this: NonterminalNode, arg0: IterationNode) => T;
+  Line?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  FrameHeader?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode) => T;
   Statement?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Allocation?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
   Assignment?: (this: NonterminalNode, arg0: NonterminalNode, arg1: IterationNode, arg2: TerminalNode, arg3: NonterminalNode) => T;
+  Label?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
   Value?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Object?: (this: NonterminalNode, arg0: IterationNode, arg1: TerminalNode, arg2: NonterminalNode, arg3: TerminalNode) => T;
   Pair?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
@@ -25,41 +33,43 @@ export interface MemoryStatementActionDict<T> extends BaseActionDict<T> {
   LocationSubscript?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
   ArrayString?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode) => T;
   StringLiteral?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  literal?: (this: NonterminalNode, arg0: IterationNode) => T;
+  Directive?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  LabelDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
+  StyleDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode) => T;
+  NodeStyles?: (this: NonterminalNode, arg0: IterationNode, arg1: IterationNode, arg2: NonterminalNode, arg3: NonterminalNode) => T;
+  LinkStyle?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
+  MultiLocation?: (this: NonterminalNode, arg0: NonterminalNode, arg1: IterationNode) => T;
+  LocationSlice?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: TerminalNode, arg3: IterationNode, arg4: IterationNode, arg5: IterationNode, arg6: TerminalNode) => T;
+  CSSClasses?: (this: NonterminalNode, arg0: IterationNode) => T;
+  cssClass?: (this: NonterminalNode, arg0: IterationNode) => T;
+  identifier?: (this: NonterminalNode, arg0: IterationNode) => T;
   string?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: TerminalNode) => T;
   char?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   nonEscape?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   escape?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode) => T;
-  literal?: (this: NonterminalNode, arg0: IterationNode) => T;
-  identifier?: (this: NonterminalNode, arg0: IterationNode) => T;
-  Label?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
-  number?: (this: NonterminalNode, arg0: IterationNode, arg1: NonterminalNode) => T;
-  zero?: (this: NonterminalNode, arg0: TerminalNode) => T;
-  nonzero?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode) => T;
-  Directive?: (this: NonterminalNode, arg0: NonterminalNode) => T;
-  LabelDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
-  StyleDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
-  Style_css?: (this: NonterminalNode, arg0: IterationNode) => T;
-  Style_json?: (this: NonterminalNode, arg0: NonterminalNode) => T;
-  Style?: (this: NonterminalNode, arg0: NonterminalNode) => T;
-  LinkDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
-  MultiLocation?: (this: NonterminalNode, arg0: NonterminalNode, arg1: IterationNode) => T;
-  LocationSlice?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: TerminalNode, arg3: IterationNode, arg4: IterationNode, arg5: IterationNode, arg6: TerminalNode) => T;
-  cssClass?: (this: NonterminalNode, arg0: IterationNode) => T;
-  json?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: NonterminalNode) => T;
+  number?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  int?: (this: NonterminalNode, arg0: IterationNode, arg1: IterationNode) => T;
+  float?: (this: NonterminalNode, arg0: IterationNode, arg1: IterationNode, arg2: TerminalNode, arg3: IterationNode) => T;
+  JsonValue?: (this: NonterminalNode, arg0: NonterminalNode) => T;
+  JsonObject?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
+  JsonArray?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
+  JsonPair?: (this: NonterminalNode, arg0: NonterminalNode, arg1: TerminalNode, arg2: NonterminalNode) => T;
+  JsonBool?: (this: NonterminalNode, arg0: TerminalNode) => T;
 }
 
-export interface MemoryStatementSemantics extends Semantics {
-  addOperation<T>(name: string, actionDict: MemoryStatementActionDict<T>): this;
-  extendOperation<T>(name: string, actionDict: MemoryStatementActionDict<T>): this;
-  addAttribute<T>(name: string, actionDict: MemoryStatementActionDict<T>): this;
-  extendAttribute<T>(name: string, actionDict: MemoryStatementActionDict<T>): this;
+export interface MemoryDiagramSemantics extends Semantics {
+  addOperation<T>(name: string, actionDict: MemoryDiagramActionDict<T>): this;
+  extendOperation<T>(name: string, actionDict: MemoryDiagramActionDict<T>): this;
+  addAttribute<T>(name: string, actionDict: MemoryDiagramActionDict<T>): this;
+  extendAttribute<T>(name: string, actionDict: MemoryDiagramActionDict<T>): this;
 }
 
-export interface MemoryStatementGrammar extends Grammar {
-  createSemantics(): MemoryStatementSemantics;
-  extendSemantics(superSemantics: MemoryStatementSemantics): MemoryStatementSemantics;
+export interface MemoryDiagramGrammar extends Grammar {
+  createSemantics(): MemoryDiagramSemantics;
+  extendSemantics(superSemantics: MemoryDiagramSemantics): MemoryDiagramSemantics;
 }
 
-declare const grammar: MemoryStatementGrammar;
+declare const grammar: MemoryDiagramGrammar;
 export default grammar;
 

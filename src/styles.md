@@ -128,12 +128,21 @@ questions:
 ## Memory Diagrams
 
 ```memory
-#label stack "Stream"
-#label heap ""
+d1 {
+  #label stack "Stream"
+  #label heap ""
 
-cin("std::cin") = &data[6]  
-data => b"Bjarne Stroustrup"
+  cin("std::cin") = &data[6]  
+  data => b"Bjarne Stroustrup"
 
-#style data[:6] highlight
-#link cin { dash: { animation: true } }
+  #style data[:6] highlight
+  #style link:cin { dash: { animation: true } }
+  #style label:cin { color: "red" }
+}
+
+d2 {
+  main:
+  foo = &data
+  data => [1,2,3]
+}
 ```
