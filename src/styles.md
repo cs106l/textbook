@@ -139,6 +139,13 @@ data => b"1234______"
 
 As you can see, diagrams consist of a series of assignments (`vec = ...`) on the stack (which may occur inside of a frame like `main:`) along with heap allocations (`data => ...`). Diagram elements can be styled either with a CSS class or by embedding a raw CSS object. Here's a more complicated example that uses subdiagrams (note how each subdiagram now has a title like `L2`, `L3`):
 
+```cpp
+int main() {
+  std::cout << "I love C++!" << std::endl;
+  return 0;
+}
+```
+
 ```memory
 L1 {
   #layout wide
