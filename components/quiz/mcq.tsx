@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import React from "react";
 import { MultipleChoiceAnswerSchema, QuestionType } from "./schema";
-import { MDXClient } from "../mdx";
+import { MDXClient } from "../mdx/client";
 import { AnswerViewProps, QuestionMethods, ResponseViewProps } from ".";
 
 import { shuffle } from "lodash";

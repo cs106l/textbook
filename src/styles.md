@@ -133,11 +133,18 @@ void foo() {}
 
 ```memory
 d1 {
+  #layout wide
+  
   #label stack "Stream"
   #label heap ""
 
   #label title "**Hello**"
-  #label subtitle "This is the diagram subtitle. This can be really long and will eventually wrap to the next line. It can contain **markdown** elements like `this`."
+  #label subtitle "This is the diagram subtitle. 
+  
+  ~~~cpp
+  int main() {}
+  ~~~
+  "
 
   cin("std::cin") = &data[6]  
   data => b"Bjarne Stroustrup"

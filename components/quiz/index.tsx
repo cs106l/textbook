@@ -25,7 +25,7 @@ import {
 } from "./schema";
 import React from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
-import { MDXClient } from "../mdx";
+import { MDXClient } from "../mdx/client";
 import { MultipleChoiceMethods } from "./mcq";
 import { z } from "zod";
 import useStoredAnswers from "./storage";

@@ -1,5 +1,4 @@
 import {
-  Box,
   Divider,
   Link,
   Table,
@@ -19,17 +18,16 @@ import {
   MDXRemoteProps as MDXRemoteServerProps,
 } from "next-mdx-remote/rsc";
 import { serialize as mdxRemoteSerialize } from "next-mdx-remote/serialize";
-import { MDXRemote as MDXRemoteClient } from "next-mdx-remote";
-import FootnoteSection from "./footnotes";
+import FootnoteSection from "../footnotes";
 
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSlug from "rehype-slug";
-import remarkQuiz from "./quiz/remark";
-import Pre from "./pre";
-import remarkMemDiagram from "./diagrams/remark";
+import remarkQuiz from "../quiz/remark";
+import Pre from "../pre";
+import remarkMemDiagram from "../diagrams/remark";
 
 /* ========================================================================= */
 /* Styling and MDX Compilation                                               */
@@ -181,27 +179,7 @@ export function MDXServer(props: MDXServerProps) {
   );
 }
 
-/* ========================================================================= */
-/* Client-side rendering                                                     */
-/* ========================================================================= */
-
 export type CompiledMDX = Awaited<ReturnType<typeof mdxRemoteSerialize>>;
-export type MDXClientProps = CompiledMDX & { noMargin?: boolean };
-
-export function MDXClient(props: MDXClientProps) {
-  return (
-    <Box
-      sx={{
-        ...(props.noMargin && {
-          "& > *:last-child": { marginBottom: 0 },
-        }),
-      }}
-    >
-      <MDXRemoteClient components={components} {...props} />
-    </Box>
-  );
-}
-
 export function serializeMDX(source: string, options?: RenderOptions) {
   return mdxRemoteSerialize(source, getMDXOptions(options ?? {}));
 }

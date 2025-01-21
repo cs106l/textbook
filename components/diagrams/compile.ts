@@ -13,11 +13,27 @@ import { mergeSx } from "merge-sx";
 import grammar from "./grammar.ohm-bundle";
 import { Interval } from "ohm-js";
 import { merge } from "lodash";
+import { serializeMDX } from "../mdx";
 
-export default function compileDiagram(content: string): MemoryDiagram {
+export default async function compileDiagram(
+  content: string
+): Promise<MemoryDiagram> {
   const result = grammar.match(content);
   if (result.failed()) parseError(result.message);
   const diagram: MemoryDiagram = semantics(result).toDiagram();
+
+  // Compile markdown fragments using remote-mdx
+  for (const subdiagram of diagram) {
+    if (typeof subdiagram.title === "string")
+      subdiagram.title = await serializeMDX(subdiagram.title);
+    if (typeof subdiagram.subtitle === "string")
+      subdiagram.subtitle = await serializeMDX(subdiagram.subtitle);
+    if (typeof subdiagram.stack.label === "string")
+      subdiagram.stack.label = await serializeMDX(subdiagram.stack.label);
+    if (typeof subdiagram.heap.label === "string")
+      subdiagram.heap.label = await serializeMDX(subdiagram.heap.label);
+  }
+
   return diagram;
 }
 
@@ -47,6 +63,10 @@ function processDirective(
   if (directive.kind === "style") {
     const values = locateValues(diagram, directive.location, source);
     values.forEach((v) => (v.style = mergeStyles(v.style, directive.style)));
+  }
+
+  if (directive.kind === "layout") {
+    diagram.layout = directive.layout;
   }
 }
 
@@ -253,7 +273,7 @@ type FrameHeaderLine = { kind: "frame"; label: string };
 type MemoryLocationSliced = (string | number | LocationSlice)[];
 type LocationSlice = { start?: number; end?: number; stride?: number };
 
-type Directive = LabelDirective | StyleDirective;
+type Directive = LabelDirective | StyleDirective | LayoutDirective;
 type LabelDirective = {
   kind: "label";
   section: "stack" | "heap" | "title" | "subtitle";
@@ -263,6 +283,10 @@ type StyleDirective = {
   kind: "style";
   location: MemoryLocationSliced;
   style: ValueStyle;
+};
+type LayoutDirective = {
+  kind: "layout";
+  layout: "wide";
 };
 
 /* ========================================================================= */
@@ -301,6 +325,7 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
     const diagram: MemorySubDiagram = {
       stack: { label: "Stack", frames: [] },
       heap: { label: "Heap", allocations: [] },
+      layout: "fit-content",
     };
 
     const variables = new Set<string>();
@@ -638,6 +663,10 @@ semantics.addOperation<Directive>("toDirective()", {
 
   StyleDirective(_, style) {
     return style.toDirective();
+  },
+
+  LayoutDirective(_, __) {
+    return { kind: "layout", layout: "wide" };
   },
 
   NodeStyles(kindNode, _, location, styles) {

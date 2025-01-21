@@ -38,13 +38,15 @@ MemoryDiagram {
   /* 
    * Directives, e.g. #style, #label
    */
-  Directive = LabelDirective | StyleDirective
+  Directive = LabelDirective | StyleDirective | LayoutDirective
     
   LabelDirective = "#label" ("stack" | "heap" | "title" | "subtitle") string
     
   StyleDirective = "#style" (NodeStyles | LinkStyle)
   NodeStyles = (("value" | "label" | "row") ":")? MultiLocation (CSSClasses | JsonObject)
   LinkStyle = "link:" MultiLocation JsonObject
+
+  LayoutDirective = "#layout" "wide"
   
   MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
   LocationSlice = "[" int? ":" int? (":" int?)? "]"

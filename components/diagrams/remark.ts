@@ -14,7 +14,7 @@ import { getOptions } from "../pre";
 import compileDiagram from "./compile";
 
 const remarkMemDiagram: Plugin = () => {
-  return (tree: Node) => {
+  return async (tree: Node) => {
     const diagramNodes: Code[] = [];
 
     visit(tree, "code", function (node: Code) {
@@ -25,7 +25,7 @@ const remarkMemDiagram: Plugin = () => {
 
     for (const node of diagramNodes) {
       const content = node.value;
-      const diagram = compileDiagram(content);
+      const diagram = await compileDiagram(content);
       node.value = JSON.stringify(diagram);
     }
 

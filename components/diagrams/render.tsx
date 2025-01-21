@@ -17,8 +17,8 @@ import { monospace } from "@/app/theme";
 import { merge } from "lodash";
 
 import type LeaderLine from "leader-line-new";
-import MarkdownJSX from "markdown-to-jsx";
-import { components } from "../mdx";
+import { CompiledMDX } from "../mdx";
+import { MDXClient } from "../mdx/client";
 
 export default function MemoryDiagramView({ content }: PreContent) {
   const diagram = React.useMemo<MemoryDiagram>(
@@ -55,7 +55,10 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
   const subdiagramRef = React.useRef<HTMLDivElement | null>(null);
   return (
     <DiagramContext.Provider value={{ diagramRef, subdiagramRef }}>
-      <Box>
+      <Box
+        className="memory-step"
+        width={diagram.layout === "wide" ? 1 : undefined}
+      >
         {(diagram.title || diagram.subtitle) && (
           <Box mb={2}>
             <MDXLabel content={diagram.title} />
@@ -63,7 +66,6 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
           </Box>
         )}
         <Box
-          className="memory-step"
           display="flex"
           gap="60px"
           fontSize="0.95rem"
@@ -100,7 +102,7 @@ function Section({
   label,
   ...rest
 }: BoxProps & {
-  label: string;
+  label: string | CompiledMDX;
 }) {
   const { children, ...boxProps } = rest;
   return (
@@ -110,7 +112,7 @@ function Section({
       height="max-content"
       {...boxProps}
     >
-      <Box fontWeight="bold" marginBottom={0.5}>
+      <Box marginBottom={0.5} sx={{ "& p": { fontWeight: "bold" } }}>
         <MDXLabel content={label} />
       </Box>
       {children}
@@ -355,25 +357,8 @@ function LiteralValueView({ value, path }: ValueProps<"literal">) {
   );
 }
 
-function MDXLabel({ content }: { content?: string }) {
+function MDXLabel({ content }: { content?: string | CompiledMDX }) {
   if (!content) return null;
-
-  /* This is a total hack: ideally we would use next-mdx-remote here,
-   * but it doesn't support prerendering a pre-compiled value on
-   * the client. So we have to use a third party library for markdown rendering, ugh!!
-   */
-  const entries = Object.entries(components as object);
-  return (
-    <Box>
-      <MarkdownJSX
-        options={{
-          overrides: Object.fromEntries(
-            entries.map(([key, value]) => [key, { component: value }])
-          ),
-        }}
-      >
-        {content}
-      </MarkdownJSX>
-    </Box>
-  );
+  if (typeof content === "string") return content;
+  return <MDXClient {...content} noMargin />;
 }
