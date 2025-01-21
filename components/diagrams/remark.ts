@@ -1,10 +1,8 @@
 /**
  * Contains a remark plugin to parse diagram markdown and compile it to JSON.
  *
- * This is done for two reasons:
- *
- * 1) The client doesn't need to compile the diagram from source, which makes loading faster.
- * 2) We have to compile embedded markdown at build time.
+ * This is done so that the client doesn't need to compile the diagram from source,
+ * which makes loading faster.
  */
 
 import { type Plugin } from "unified";
@@ -16,7 +14,7 @@ import { getOptions } from "../pre";
 import compileDiagram from "./compile";
 
 const remarkMemDiagram: Plugin = () => {
-  return async (tree: Node) => {
+  return (tree: Node) => {
     const diagramNodes: Code[] = [];
 
     visit(tree, "code", function (node: Code) {
@@ -27,7 +25,7 @@ const remarkMemDiagram: Plugin = () => {
 
     for (const node of diagramNodes) {
       const content = node.value;
-      const diagram = await compileDiagram(content);
+      const diagram = compileDiagram(content);
       node.value = JSON.stringify(diagram);
     }
 

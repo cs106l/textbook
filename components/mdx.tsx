@@ -29,6 +29,7 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSlug from "rehype-slug";
 import remarkQuiz from "./quiz/remark";
 import Pre from "./pre";
+import remarkMemDiagram from "./diagrams/remark";
 
 /* ========================================================================= */
 /* Styling and MDX Compilation                                               */
@@ -103,7 +104,7 @@ function ruleHeading(props?: TypographyProps) {
   });
 }
 
-const components: Readonly<MDXComponents> = {
+export const components: Readonly<MDXComponents> = {
   h1: ruleHeading({ variant: "h1" }),
   h2: ruleHeading({ variant: "h2" }),
   h3: heading({ variant: "h3" }),
@@ -147,7 +148,12 @@ type RenderOptions = {
 export function getMDXOptions(options: RenderOptions): SerializeOptions {
   return {
     mdxOptions: {
-      remarkPlugins: [remarkGfm, remarkMath, [remarkQuiz, options.path]],
+      remarkPlugins: [
+        remarkGfm,
+        remarkMath,
+        [remarkQuiz, options.path],
+        remarkMemDiagram,
+      ],
       rehypePlugins: [
         rehypeKatex,
         rehypeSlug,

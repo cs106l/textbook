@@ -30,13 +30,14 @@
     "katex": "^0.16.15",
     "leader-line-new": "^1.1.9",
     "lodash": "^4.17.21",
+    "markdown-to-jsx": "^7.7.3",
     "merge-sx": "^3.3.1",
-    "next": "15.1.0",
+    "next": "15.1.5",
     "next-mdx-remote": "^5.0.0",
     "object-hash": "^3.0.0",
     "ohm-js": "^17.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
     "react-simple-code-editor": "^0.14.1",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-katex": "^7.0.1",
@@ -54,10 +55,14 @@
     "@types/lodash": "^4.17.14",
     "@types/node": "^20",
     "@types/object-hash": "^3.0.6",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "19.0.7",
+    "@types/react-dom": "19.0.3",
     "eslint": "^9",
-    "eslint-config-next": "15.1.0",
+    "eslint-config-next": "15.1.5",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@types/react": "19.0.7",
+    "@types/react-dom": "19.0.3"
   }
 }

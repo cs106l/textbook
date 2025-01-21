@@ -13,25 +13,11 @@ import { mergeSx } from "merge-sx";
 import grammar from "./grammar.ohm-bundle";
 import { Interval } from "ohm-js";
 import { merge } from "lodash";
-import { serializeMDX } from "../mdx";
 
-export default async function compileDiagram(content: string): Promise<MemoryDiagram> {
+export default function compileDiagram(content: string): MemoryDiagram {
   const result = grammar.match(content);
   if (result.failed()) parseError(result.message);
   const diagram: MemoryDiagram = semantics(result).toDiagram();
-
-  // Compile markdown fragments using remote-mdx
-  for (const subdiagram of diagram) {
-    if (typeof subdiagram.title === "string")
-      subdiagram.title = await serializeMDX(subdiagram.title);
-    if (typeof subdiagram.subtitle === "string")
-      subdiagram.subtitle = await serializeMDX(subdiagram.subtitle);
-    if (typeof subdiagram.stack.label === "string")
-      subdiagram.stack.label = await serializeMDX(subdiagram.stack.label);
-    if (typeof subdiagram.heap.label === "string")
-      subdiagram.heap.label = await serializeMDX(subdiagram.heap.label);
-  }
-
   return diagram;
 }
 

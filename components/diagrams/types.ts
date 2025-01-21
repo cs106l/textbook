@@ -1,23 +1,22 @@
 import { SxProps } from "@mui/material";
 import LeaderLine from "leader-line-new";
-import { CompiledMDX } from "../mdx";
 
 export type MemoryDiagram = MemorySubDiagram[];
 
 export type MemorySubDiagram = {
-  title?: string | CompiledMDX;
-  subtitle?: string | CompiledMDX;
+  title?: string;
+  subtitle?: string;
   stack: StackSection;
   heap: HeapSection;
 };
 
 export type StackSection = {
-  label: string | CompiledMDX;
+  label: string;
   frames: MemoryFrame[];
 };
 
 export type HeapSection = {
-  label: string | CompiledMDX;
+  label: string;
   allocations: MemoryStatement[];
 };
 

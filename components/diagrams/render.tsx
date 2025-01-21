@@ -12,19 +12,13 @@ import {
   NodeStyle,
 } from "./types";
 
-import {
-  Box,
-  BoxProps,
-  styled,
-  SxProps,
-  Typography,
-  useTheme,
-} from "@mui/material";
+import { Box, BoxProps, styled, SxProps, useTheme } from "@mui/material";
 import { monospace } from "@/app/theme";
 import { merge } from "lodash";
 
 import type LeaderLine from "leader-line-new";
-import { CompiledMDX, MDXClient } from "../mdx";
+import MarkdownJSX from "markdown-to-jsx";
+import { components } from "../mdx";
 
 export default function MemoryDiagramView({ content }: PreContent) {
   const diagram = React.useMemo<MemoryDiagram>(
@@ -68,34 +62,34 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
             <MDXLabel content={diagram.subtitle} />
           </Box>
         )}
-      <Box
-        className="memory-step"
-        display="flex"
-        gap="60px"
-        fontSize="0.95rem"
-        lineHeight={1.25}
-        ref={subdiagramRef}
-      >
-        {diagram.stack.frames.length > 0 && (
+        <Box
+          className="memory-step"
+          display="flex"
+          gap="60px"
+          fontSize="0.95rem"
+          lineHeight={1.25}
+          ref={subdiagramRef}
+        >
+          {diagram.stack.frames.length > 0 && (
             <Section
               label={diagram.stack.label}
               className="memory-section-stack"
             >
-            {diagram.stack.frames.map((frame, idx) => (
-              <Frame
-                key={idx}
-                label={frame.label}
-                section="stack"
-                statements={frame.statements}
-              />
-            ))}
-          </Section>
-        )}
-        {diagram.heap.allocations.length > 0 && (
-          <Section label={diagram.heap.label} className="memory-section-heap">
-            <Frame statements={diagram.heap.allocations} section="heap" />
-          </Section>
-        )}
+              {diagram.stack.frames.map((frame, idx) => (
+                <Frame
+                  key={idx}
+                  label={frame.label}
+                  section="stack"
+                  statements={frame.statements}
+                />
+              ))}
+            </Section>
+          )}
+          {diagram.heap.allocations.length > 0 && (
+            <Section label={diagram.heap.label} className="memory-section-heap">
+              <Frame statements={diagram.heap.allocations} section="heap" />
+            </Section>
+          )}
         </Box>
       </Box>
     </DiagramContext.Provider>
@@ -106,7 +100,7 @@ function Section({
   label,
   ...rest
 }: BoxProps & {
-  label: string | CompiledMDX;
+  label: string;
 }) {
   const { children, ...boxProps } = rest;
   return (
@@ -116,7 +110,7 @@ function Section({
       height="max-content"
       {...boxProps}
     >
-      <Box sx={{ "& p": { fontWeight: "bold" } }}>
+      <Box fontWeight="bold" marginBottom={0.5}>
         <MDXLabel content={label} />
       </Box>
       {children}
@@ -361,11 +355,25 @@ function LiteralValueView({ value, path }: ValueProps<"literal">) {
   );
 }
 
-function MDXLabel({ content }: { content?: string | CompiledMDX }) {
+function MDXLabel({ content }: { content?: string }) {
   if (!content) return null;
-  return typeof content === "string" ? (
-    <Typography>{content}</Typography>
-  ) : (
-    <MDXClient noMargin {...content} />
+
+  /* This is a total hack: ideally we would use next-mdx-remote here,
+   * but it doesn't support prerendering a pre-compiled value on
+   * the client. So we have to use a third party library for markdown rendering, ugh!!
+   */
+  const entries = Object.entries(components as object);
+  return (
+    <Box>
+      <MarkdownJSX
+        options={{
+          overrides: Object.fromEntries(
+            entries.map(([key, value]) => [key, { component: value }])
+          ),
+        }}
+      >
+        {content}
+      </MarkdownJSX>
+    </Box>
   );
 }
