@@ -6,6 +6,7 @@ import {
   ValueStyle,
   MemorySubDiagram,
   NodeStyle,
+  DiagramLabels,
 } from "./types";
 
 import { mergeSx } from "merge-sx";
@@ -24,14 +25,10 @@ export default async function compileDiagram(
 
   // Compile markdown fragments using remote-mdx
   for (const subdiagram of diagram) {
-    if (typeof subdiagram.title === "string")
-      subdiagram.title = await serializeMDX(subdiagram.title);
-    if (typeof subdiagram.subtitle === "string")
-      subdiagram.subtitle = await serializeMDX(subdiagram.subtitle);
-    if (typeof subdiagram.stack.label === "string")
-      subdiagram.stack.label = await serializeMDX(subdiagram.stack.label);
-    if (typeof subdiagram.heap.label === "string")
-      subdiagram.heap.label = await serializeMDX(subdiagram.heap.label);
+    for (const label of Object.values(subdiagram.labels)) {
+      if (typeof label?.label === "string")
+        label.label = await serializeMDX(label.label);
+    }
   }
 
   return diagram;
@@ -52,17 +49,24 @@ function processDirective(
   source: Interval
 ) {
   if (directive.kind === "label") {
-    if (directive.section === "stack") diagram.stack.label = directive.label;
-    else if (directive.section === "heap") diagram.heap.label = directive.label;
-    else if (directive.section === "title") diagram.title = directive.label;
-    else if (directive.section === "subtitle")
-      diagram.subtitle = directive.label;
+    if (diagram.labels[directive.section])
+      diagram.labels[directive.section]!.label = directive.label;
+    else diagram.labels[directive.section] = { label: directive.label };
     return;
   }
 
   if (directive.kind === "style") {
-    const values = locateValues(diagram, directive.location, source);
-    values.forEach((v) => (v.style = mergeStyles(v.style, directive.style)));
+    if (directive.type === "node") {
+      const values = locateValues(diagram, directive.location, source);
+      values.forEach((v) => (v.style = mergeStyles(v.style, directive.style)));
+    } else {
+      if (!diagram.labels[directive.location])
+        diagram.labels[directive.location] = { label: "" };
+      diagram.labels[directive.location]!.style = mergeNodeStyles(
+        diagram.labels[directive.location]!.style,
+        directive.style
+      );
+    }
   }
 
   if (directive.kind === "layout") {
@@ -92,7 +96,7 @@ function mergeStyles(
   return {
     node: mergeNodeStyles(existing?.node, newStyle.node),
     value: mergeNodeStyles(existing?.value, newStyle.value),
-    label: mergeNodeStyles(existing?.label, newStyle.label),
+    name: mergeNodeStyles(existing?.name, newStyle.name),
     row: mergeNodeStyles(existing?.row, newStyle.row),
     link: merge(existing?.link, newStyle.link),
   };
@@ -104,10 +108,10 @@ function locateValues(
   source?: Interval
 ): MemoryValue[] {
   const variables = new Map<string, MemoryValue>();
-  diagram.stack.frames.forEach((f) =>
+  diagram.stack.forEach((f) =>
     f.statements.forEach((s) => variables.set(s.variable, s.value))
   );
-  diagram.heap.allocations.forEach((s) => variables.set(s.variable, s.value));
+  diagram.heap.forEach((s) => variables.set(s.variable, s.value));
 
   const values: MemoryValue[] = [];
   locateValuesRec(variables, loc, 0, values, source);
@@ -276,13 +280,21 @@ type LocationSlice = { start?: number; end?: number; stride?: number };
 type Directive = LabelDirective | StyleDirective | LayoutDirective;
 type LabelDirective = {
   kind: "label";
-  section: "stack" | "heap" | "title" | "subtitle";
+  section: keyof DiagramLabels;
   label: string;
 };
-type StyleDirective = {
+type StyleDirective = NodeStyleDirective | LabelStyleDirective;
+type NodeStyleDirective = {
   kind: "style";
+  type: "node";
   location: MemoryLocationSliced;
   style: ValueStyle;
+};
+type LabelStyleDirective = {
+  kind: "style";
+  type: "label";
+  location: keyof DiagramLabels;
+  style: NodeStyle;
 };
 type LayoutDirective = {
   kind: "layout";
@@ -310,8 +322,11 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
     const diagram: MemorySubDiagram = lines.toSubDiagram();
     return {
       // Format title with `` so it looks like code by default
-      title: `\`${identifier.asString()}\``,
       ...diagram,
+      labels: {
+        title: { label: `\`${identifier.asString()}\`` },
+        ...diagram.labels,
+      },
     };
   },
 
@@ -323,9 +338,13 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
     }));
 
     const diagram: MemorySubDiagram = {
-      stack: { label: "Stack", frames: [] },
-      heap: { label: "Heap", allocations: [] },
+      stack: [],
+      heap: [],
       layout: "fit-content",
+      labels: {
+        stack: { label: "Stack" },
+        heap: { label: "Heap" },
+      },
     };
 
     const variables = new Set<string>();
@@ -335,7 +354,7 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
 
       // Check to see if this is the start of a new frame
       if (line.kind === "frame") {
-        diagram.stack.frames.push({
+        diagram.stack.push({
           label: line.label,
           statements: [],
         });
@@ -356,15 +375,15 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
       if (line.statement.label) {
         // Assignment in stack frame
         // Make sure there is a frame available
-        if (diagram.stack.frames.length === 0) {
-          diagram.stack.frames.push({ statements: [] });
+        if (diagram.stack.length === 0) {
+          diagram.stack.push({ statements: [] });
         }
 
-        const frame = diagram.stack.frames[diagram.stack.frames.length - 1];
+        const frame = diagram.stack[diagram.stack.length - 1];
         frame.statements.push(line.statement);
       } else {
         // Allocation on heap
-        diagram.heap.allocations.push(line.statement);
+        diagram.heap.push(line.statement);
       }
     }
 
@@ -669,12 +688,22 @@ semantics.addOperation<Directive>("toDirective()", {
     return { kind: "layout", layout: "wide" };
   },
 
+  LabelStyle(_, location, style) {
+    return {
+      kind: "style",
+      type: "label",
+      location: location.sourceString as keyof DiagramLabels,
+      style: style.toNodeStyle(),
+    };
+  },
+
   NodeStyles(kindNode, _, location, styles) {
     const kind = ((kindNode.numChildren > 0 &&
       kindNode.child(0).sourceString) ||
       "node") as keyof ValueStyle;
     return {
       kind: "style",
+      type: "node",
       location: location.toLocationSliced(),
       style: {
         [kind]: styles.toNodeStyle(),
@@ -685,6 +714,7 @@ semantics.addOperation<Directive>("toDirective()", {
   LinkStyle(_, location, style) {
     return {
       kind: "style",
+      type: "node",
       location: location.toLocationSliced(),
       style: {
         link: style.toJSON(),
@@ -694,16 +724,18 @@ semantics.addOperation<Directive>("toDirective()", {
 });
 
 semantics.addOperation<NodeStyle>("toNodeStyle()", {
-  JsonObject(_, __, ___) {
-    return {
-      sx: this.toJSON(),
-    };
+  Styles(styles) {
+    return styles.children
+      .map((n) => n.toNodeStyle())
+      .reduce(mergeNodeStyles, undefined);
   },
 
-  CSSClasses(classes) {
-    return {
-      className: classes.children.map((n) => n.asString()).join(" "),
-    };
+  JsonObject(_, __, ___) {
+    return { sx: this.toJSON() };
+  },
+
+  cssClass(className) {
+    return { className: className.sourceString };
   },
 });
 
@@ -735,5 +767,9 @@ semantics.addOperation<any>("toJSON()", {
 
   number(_) {
     return this.toNumber();
+  },
+
+  cssClass(_) {
+    return this.asString();
   },
 });

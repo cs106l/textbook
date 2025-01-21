@@ -127,18 +127,26 @@ questions:
 
 ## Memory Diagrams
 
-```cpp
-void foo() {}
-```
+Memory diagrams allow you to embed short diagrams showcasing the structure of memory at some point in a program. For example, here is an example showing the allocation of a vector on the stack/heap:
 
 ```memory
-d1 {
+main:
+vec = Vector<int>{size: 4, capacity: 10, data: &data}
+data => b"1234______"
+
+#style data[:4] highlight { fontWeight: bold }
+```
+
+As you can see, diagrams consist of a series of assignments (`vec = ...`) on the stack (which may occur inside of a frame like `main:`) along with heap allocations (`data => ...`). Diagram elements can be styled either with a CSS class or by embedding a raw CSS object. Here's a more complicated example that uses subdiagrams (note how each subdiagram now has a title like `L2`, `L3`):
+
+```memory
+L1 {
   #layout wide
   
   #label stack "Stream"
   #label heap ""
 
-  #label title "**Hello**"
+  #label title "**A Custom Title**"
   #label subtitle "This is the diagram subtitle. 
   
   ~~~cpp
@@ -151,12 +159,67 @@ d1 {
 
   #style data[:6] highlight
   #style link:cin { dash: { animation: true } }
-  #style label:cin { color: "red" }
+  #style name:cin { color: "red" }
 }
 
-d2 {
+L2 {
+  #label subtitle "This one has a *red* subtitle."
+
   main:
   foo = &data
   data => [1,2,3]
+
+  #style label:subtitle { color: red }
 }
+
+L3 {
+  x = 1
+}
+```
+
+Note how in the above, placing a diagram immediately below a code block causes the two to appear merged together.
+
+### Styling
+
+To style the diagram, you can use a `#style` directive. The syntax is:
+
+```c
+#style [loc] [cssClassOrObject ...]         // Styles a node's surrounding container
+#style name:[loc] [cssClassOrObject ...]    // For fields/variables, styles the name of the node
+#style row:[loc] [cssClassOrObject ...]     // For fields/variables, styles the entire name/value row
+#style value:[loc] [cssClassOrObject ...]   // Styles the innermost contents of a node
+#style link:[loc] [lineOptions]             // Styles the arrow for a pointer
+```
+
+`cssClassOrObject` is either a CSS classname or a JSON-esque object containing CSS properties. `lineOptions` are the [LeaderLine options](https://github.com/II-alex-II/leader-line-new?tab=readme-ov-file#options) for the arrow connecting a pointer to its pointee.
+
+Note that you can use Python style array slicing, e.g.
+
+```c
+#style data[2:10:2] highlight
+```
+
+would highlight elements `[2, 10)`, skipping every other element. Negative indexes are allowed to refer to locations relative to the end of the array, e.g. `data[-1]`.
+
+### Wide layout
+
+To have an individual diagram occupy the width of the screen, use the `#layout wide` directive within that diagram. Diagrams by default will attempt to stack horizontally, wrapping if they become too wide.
+
+### Labels
+
+Use the label directive to custom diagram labels. All of the labels support multi-line markdown strings:
+
+```c
+#label title "**A title**"    // The title of the diagram
+#label subtitle "A subtitle"  // The subtitle of the diagram
+#label stack "Stack"          // The label of the stack section
+#label heap "Heap"            // The label of the heap section
+```
+
+Use an empty string to hide that label.
+
+You can style a label using the `#style label` directive, which works similarly to [styling a node](#styling)
+
+```c
+#style label:subtitle [cssClassOrObject ...] 
 ```

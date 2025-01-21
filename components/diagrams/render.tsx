@@ -10,6 +10,7 @@ import {
   MemorySubDiagram,
   MemoryValue,
   NodeStyle,
+  StyledLabel,
 } from "./types";
 
 import { Box, BoxProps, styled, SxProps, useTheme } from "@mui/material";
@@ -17,7 +18,6 @@ import { monospace } from "@/app/theme";
 import { merge } from "lodash";
 
 import type LeaderLine from "leader-line-new";
-import { CompiledMDX } from "../mdx";
 import { MDXClient } from "../mdx/client";
 
 export default function MemoryDiagramView({ content }: PreContent) {
@@ -38,7 +38,7 @@ export default function MemoryDiagramView({ content }: PreContent) {
         ref={diagramRef}
         display="flex"
         flexWrap="wrap"
-        gap="20px"
+        gap="30px"
       >
         {diagram.map((subdiagram, idx) => (
           <SubdiagramView key={idx} diagram={subdiagram} />
@@ -59,10 +59,10 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
         className="memory-step"
         width={diagram.layout === "wide" ? 1 : undefined}
       >
-        {(diagram.title || diagram.subtitle) && (
+        {(diagram.labels.title?.label || diagram.labels.subtitle?.label) && (
           <Box mb={2}>
-            <MDXLabel content={diagram.title} />
-            <MDXLabel content={diagram.subtitle} />
+            <MDXLabel content={diagram.labels.title} />
+            <MDXLabel content={diagram.labels.subtitle} />
           </Box>
         )}
         <Box
@@ -72,12 +72,12 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
           lineHeight={1.25}
           ref={subdiagramRef}
         >
-          {diagram.stack.frames.length > 0 && (
+          {diagram.stack.length > 0 && (
             <Section
-              label={diagram.stack.label}
+              label={diagram.labels.stack}
               className="memory-section-stack"
             >
-              {diagram.stack.frames.map((frame, idx) => (
+              {diagram.stack.map((frame, idx) => (
                 <Frame
                   key={idx}
                   label={frame.label}
@@ -87,9 +87,12 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
               ))}
             </Section>
           )}
-          {diagram.heap.allocations.length > 0 && (
-            <Section label={diagram.heap.label} className="memory-section-heap">
-              <Frame statements={diagram.heap.allocations} section="heap" />
+          {diagram.heap.length > 0 && (
+            <Section
+              label={diagram.labels.heap}
+              className="memory-section-heap"
+            >
+              <Frame statements={diagram.heap} section="heap" />
             </Section>
           )}
         </Box>
@@ -102,7 +105,7 @@ function Section({
   label,
   ...rest
 }: BoxProps & {
-  label: string | CompiledMDX;
+  label?: StyledLabel;
 }) {
   const { children, ...boxProps } = rest;
   return (
@@ -112,9 +115,11 @@ function Section({
       height="max-content"
       {...boxProps}
     >
-      <Box marginBottom={0.5} sx={{ "& p": { fontWeight: "bold" } }}>
-        <MDXLabel content={label} />
-      </Box>
+      {label?.label && (
+        <Box marginBottom={0.5} sx={{ "& p": { fontWeight: "bold" } }}>
+          <MDXLabel content={label} />
+        </Box>
+      )}
       {children}
     </Box>
   );
@@ -264,7 +269,7 @@ function ObjectValueView({
           {Object.entries(value.value).map(([name, elem], idx) => (
             <Tr key={idx} {...elem.style?.row}>
               {!hideLabels && (
-                <Td {...elem.style?.label}>{labelMapping?.[name] || name}</Td>
+                <Td {...elem.style?.name}>{labelMapping?.[name] || name}</Td>
               )}
               <Td
                 data-connector={section === "stack" ? "right" : "left"}
@@ -357,8 +362,9 @@ function LiteralValueView({ value, path }: ValueProps<"literal">) {
   );
 }
 
-function MDXLabel({ content }: { content?: string | CompiledMDX }) {
+function MDXLabel({ content }: { content?: StyledLabel }) {
   if (!content) return null;
-  if (typeof content === "string") return content;
-  return <MDXClient {...content} noMargin />;
+  if (typeof content.label === "string")
+    return <Box {...content.style}>{content.label}</Box>;
+  return <MDXClient {...content.style} {...content.label} noMargin />;
 }

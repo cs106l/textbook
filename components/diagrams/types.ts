@@ -5,21 +5,22 @@ import { CompiledMDX } from "../mdx";
 export type MemoryDiagram = MemorySubDiagram[];
 
 export type MemorySubDiagram = {
-  title?: string | CompiledMDX;
-  subtitle?: string | CompiledMDX;
-  stack: StackSection;
-  heap: HeapSection;
+  labels: DiagramLabels;
+  stack: MemoryFrame[];
+  heap: MemoryStatement[];
   layout: "fit-content" | "wide";
 };
 
-export type StackSection = {
+export type StyledLabel = {
   label: string | CompiledMDX;
-  frames: MemoryFrame[];
+  style?: NodeStyle;
 };
 
-export type HeapSection = {
-  label: string | CompiledMDX;
-  allocations: MemoryStatement[];
+export type DiagramLabels = {
+  stack?: StyledLabel;
+  heap?: StyledLabel;
+  title?: StyledLabel;
+  subtitle?: StyledLabel;
 };
 
 export type MemoryFrame = {
@@ -66,7 +67,7 @@ export type MemoryLocation = (string | number)[];
 export type ValueStyle = {
   node?: NodeStyle;
   value?: NodeStyle;
-  label?: NodeStyle;
+  name?: NodeStyle;
   row?: NodeStyle;
   link?: LeaderLine.Options;
 };

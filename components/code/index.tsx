@@ -183,8 +183,7 @@ export default function CodeBlock({ options, content }: PreContent) {
         sx={{
           paddingY: 1,
           paddingX: 2,
-          overflowX: "scroll",
-          scrollbarWidth: "none",
+          overflowX: "auto",
           height: 1,
           width: 1,
         }}

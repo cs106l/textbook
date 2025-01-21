@@ -14,18 +14,19 @@
  * https://github.com/hashicorp/next-mdx-remote/blob/main/src/index.tsx
  */
 
-export type MDXClientProps = CompiledMDX & { noMargin?: boolean };
+export type MDXClientProps = CompiledMDX & BoxProps & { noMargin?: boolean };
 
 import * as runtime from "react/jsx-runtime";
 import * as devRuntime from "react/jsx-dev-runtime";
 import * as mdx from "@mdx-js/react";
 import { CompiledMDX, components } from ".";
 import React from "react";
-import { Box } from "@mui/material";
+import { Box, BoxProps } from "@mui/material";
+import { mergeSx } from "merge-sx";
 
 export function MDXClient(props: MDXClientProps) {
+  const { scope, frontmatter, compiledSource, ...rest } = props;
   const Content: React.ElementType = React.useMemo(() => {
-    const { scope, frontmatter, compiledSource } = props;
     // if we're ready to render, we can assemble the component tree and let React do its thing
     // first we set up the scope which has to include the mdx custom
     // create element function as well as any components we're using
@@ -53,15 +54,13 @@ export function MDXClient(props: MDXClientProps) {
     );
 
     return hydrateFn.apply(hydrateFn, values).default;
-  }, [props]);
+  }, [scope, frontmatter, compiledSource]);
 
+  const { sx, noMargin, ...boxProps } = rest;
   return (
     <Box
-      sx={{
-        ...(props.noMargin && {
-          "& > *:last-child": { marginBottom: 0 },
-        }),
-      }}
+      sx={mergeSx(noMargin && { "& > *:last-child": { marginBottom: 0 } }, sx)}
+      {...boxProps}
     >
       <mdx.MDXProvider components={components}>{<Content />}</mdx.MDXProvider>
     </Box>

@@ -2,7 +2,9 @@
  * Contains a remark plugin to parse diagram markdown and compile it to JSON.
  *
  * This is done so that the client doesn't need to compile the diagram from source,
- * which makes loading faster.
+ * which makes loading faster, allows us to compile markdown on the server, and
+ * makes sure that diagram content gets verified at build time (so we can catch
+ * errors early).
  */
 
 import { type Plugin } from "unified";

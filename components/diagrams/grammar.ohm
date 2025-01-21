@@ -40,25 +40,27 @@ MemoryDiagram {
    */
   Directive = LabelDirective | StyleDirective | LayoutDirective
     
-  LabelDirective = "#label" ("stack" | "heap" | "title" | "subtitle") string
+  LabelDirective = "#label" (LabelLocation) string
+  LabelLocation = "stack" | "heap" | "title" | "subtitle"
     
-  StyleDirective = "#style" (NodeStyles | LinkStyle)
-  NodeStyles = (("value" | "label" | "row") ":")? MultiLocation (CSSClasses | JsonObject)
+  StyleDirective = "#style" (LabelStyle | NodeStyles | LinkStyle)
+  LabelStyle = "label:" LabelLocation Styles
+  NodeStyles = (("value" | "name" | "row") ":")? MultiLocation Styles
   LinkStyle = "link:" MultiLocation JsonObject
+  Styles = (cssClass | JsonObject)+
 
   LayoutDirective = "#layout" "wide"
   
   MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
   LocationSlice = "[" int? ":" int? (":" int?)? "]"
-    
-  CSSClasses = cssClass+
+  
   cssClass = (alnum | "_" | "-")+
   
   /*
    * Utilities and simple JSON parser
    */ 
    
-  identifier = (alnum | "_" )+
+  identifier = (alnum | "_" | "<" | ">" )+
   
   string = "\"" char* "\""
   char = nonEscape | escape
@@ -69,9 +71,9 @@ MemoryDiagram {
   int = "-"? digit+
   float = "-"? digit* "." digit+
   
-  JsonValue = JsonObject | JsonArray | JsonBool | string | number
+  JsonValue = JsonObject | JsonArray | JsonBool | string | number | cssClass
   JsonObject = "{" ListOf<JsonPair, ","> "}"
   JsonArray = "[" ListOf<JsonValue, ","> "]"
-  JsonPair = (identifier | string) ":" JsonValue
+  JsonPair = (cssClass | string) ":" JsonValue
   JsonBool = "true" | "false"
 }
