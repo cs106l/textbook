@@ -19,6 +19,7 @@ import { merge } from "lodash";
 
 import type LeaderLine from "leader-line-new";
 import { MDXClient } from "../mdx/client";
+import { mergeSx } from "merge-sx";
 
 export default function MemoryDiagramView({ content }: PreContent) {
   const diagram = React.useMemo<MemoryDiagram>(
@@ -61,8 +62,14 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
       >
         {(diagram.labels.title?.label || diagram.labels.subtitle?.label) && (
           <Box mb={2}>
-            <MDXLabel content={diagram.labels.title} />
-            <MDXLabel content={diagram.labels.subtitle} />
+            <MDXLabel
+              content={diagram.labels.title}
+              sx={{ marginBottom: 0.5 }}
+            />
+            <MDXLabel
+              content={diagram.labels.subtitle}
+              sx={{ "& p": { fontSize: "0.875rem" } }}
+            />
           </Box>
         )}
         <Box
@@ -138,7 +145,7 @@ function Frame({
     <ObjectValueView
       value={{
         kind: "object",
-        value: Object.fromEntries(statements.map((s) => [s.variable, s.value])),
+        value: statements.map((s) => [s.variable, s.value] as const),
         type: label,
       }}
       depth={0}
@@ -266,7 +273,7 @@ function ObjectValueView({
         data-ref={formatLocation(path)}
       >
         <tbody>
-          {Object.entries(value.value).map(([name, elem], idx) => (
+          {value.value.map(([name, elem], idx) => (
             <Tr key={idx} {...elem.style?.row}>
               {!hideLabels && (
                 <Td {...elem.style?.name}>{labelMapping?.[name] || name}</Td>
@@ -362,9 +369,13 @@ function LiteralValueView({ value, path }: ValueProps<"literal">) {
   );
 }
 
-function MDXLabel({ content }: { content?: StyledLabel }) {
+function MDXLabel({ content, sx }: { content?: StyledLabel; sx?: SxProps }) {
   if (!content) return null;
+  const style: NodeStyle = {
+    ...content.style,
+    sx: mergeSx(sx, content?.style?.sx),
+  };
   if (typeof content.label === "string")
-    return <Box {...content.style}>{content.label}</Box>;
-  return <MDXClient {...content.style} {...content.label} noMargin />;
+    return <Box {...style}>{content.label}</Box>;
+  return <MDXClient {...style} {...content.label} noMargin />;
 }

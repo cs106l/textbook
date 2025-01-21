@@ -109,6 +109,7 @@ const theme = createTheme({
             color: "var(--palette-grey-400)",
             outlineColor: "var(--palette-grey-800)",
           }),
+          whiteSpace: "pre-wrap",
         },
         blockquote: {
           borderLeft: "3px solid var(--palette-divider)",
@@ -131,6 +132,9 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           width: "unset",
+          "& code": {
+            whiteSpace: "pre",
+          },
         },
       },
     },

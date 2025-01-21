@@ -172,7 +172,8 @@ function locateValuesRec(
   if (typeof segment === "string") {
     if (parent.kind !== "object")
       return fail(`cannot reference field "${segment}" of non-object value {}`);
-    if (!Object.keys(parent.value).includes(segment))
+    const nextValue = parent.value.find(([key]) => key === segment);
+    if (!nextValue)
       return fail(`field "${segment}" does not exist in object {}`);
     return locateValuesRec(
       variables,
@@ -181,7 +182,7 @@ function locateValuesRec(
       values,
       source,
       [...parentPath, segment],
-      parent.value[segment]
+      nextValue[1]
     );
   }
 
@@ -410,9 +411,7 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
       }
 
       if (value.kind === "object") {
-        Object.values(value.value).forEach((v) =>
-          analyzeValue(statement, source, v)
-        );
+        value.value.forEach((v) => analyzeValue(statement, source, v[1]));
         return;
       }
     };
@@ -510,7 +509,7 @@ semantics.addOperation<MemoryValue>("toValue()", {
     return {
       kind: "object",
       type: type.numChildren > 0 ? type.child(0).asString() : undefined,
-      value: Object.fromEntries(pairs),
+      value: pairs,
     };
   },
 

@@ -54,7 +54,7 @@ export type ArrayValue = {
 export type ObjectValue = {
   kind: "object";
   type?: string;
-  value: Record<string, MemoryValue>;
+  value: (readonly [string, MemoryValue])[];
 };
 
 export type PointerValue = {
