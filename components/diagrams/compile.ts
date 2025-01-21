@@ -13,11 +13,26 @@ import { mergeSx } from "merge-sx";
 import grammar from "./grammar.ohm-bundle";
 import { Interval } from "ohm-js";
 import { merge } from "lodash";
+import { serializeMDX } from "../mdx";
 
-export default function compileDiagram(content: string): MemoryDiagram {
+export default async function compileDiagram(content: string): Promise<MemoryDiagram> {
   const result = grammar.match(content);
   if (result.failed()) parseError(result.message);
-  return semantics(result).toDiagram();
+  const diagram: MemoryDiagram = semantics(result).toDiagram();
+
+  // Compile markdown fragments using remote-mdx
+  for (const subdiagram of diagram) {
+    if (typeof subdiagram.title === "string")
+      subdiagram.title = await serializeMDX(subdiagram.title);
+    if (typeof subdiagram.subtitle === "string")
+      subdiagram.subtitle = await serializeMDX(subdiagram.subtitle);
+    if (typeof subdiagram.stack.label === "string")
+      subdiagram.stack.label = await serializeMDX(subdiagram.stack.label);
+    if (typeof subdiagram.heap.label === "string")
+      subdiagram.heap.label = await serializeMDX(subdiagram.heap.label);
+  }
+
+  return diagram;
 }
 
 function parseError(message: string = "", source?: Interval): never {
@@ -284,7 +299,8 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
   SubDiagram(identifier, _, lines, __) {
     const diagram: MemorySubDiagram = lines.toSubDiagram();
     return {
-      title: identifier.asString(),
+      // Format title with `` so it looks like code by default
+      title: `\`${identifier.asString()}\``,
       ...diagram,
     };
   },
@@ -453,9 +469,11 @@ semantics.addOperation<MemoryValue>("toValue()", {
     // Check uniqueness of field names
     const names = new Set<string>();
     for (const [name] of pairs) {
-      if (names.has(name)) {
-        throw new Error(`Duplicate field name in object expression "${name}"`);
-      }
+      if (names.has(name))
+        parseError(
+          `Duplicate field name in object expression "${name}"`,
+          this.source
+        );
       names.add(name);
     }
 

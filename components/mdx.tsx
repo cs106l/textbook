@@ -179,9 +179,8 @@ export function MDXServer(props: MDXServerProps) {
 /* Client-side rendering                                                     */
 /* ========================================================================= */
 
-export type MDXClientProps = Awaited<ReturnType<typeof mdxRemoteSerialize>> & {
-  noMargin?: boolean;
-};
+export type CompiledMDX = Awaited<ReturnType<typeof mdxRemoteSerialize>>;
+export type MDXClientProps = CompiledMDX & { noMargin?: boolean };
 
 export function MDXClient(props: MDXClientProps) {
   return (

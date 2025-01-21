@@ -127,10 +127,17 @@ questions:
 
 ## Memory Diagrams
 
+```cpp
+void foo() {}
+```
+
 ```memory
 d1 {
   #label stack "Stream"
   #label heap ""
+
+  #label title "**Hello**"
+  #label subtitle "This is the diagram subtitle. This can be really long and will eventually wrap to the next line. It can contain **markdown** elements like `this`."
 
   cin("std::cin") = &data[6]  
   data => b"Bjarne Stroustrup"

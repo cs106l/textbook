@@ -2,8 +2,9 @@
 
 import React from "react";
 import { PreContent } from "../pre";
-import compileDiagram, { formatLocation, mergeNodeStyles } from "./compile";
+import { formatLocation, mergeNodeStyles } from "./compile";
 import {
+  MemoryDiagram,
   MemoryLocation,
   MemoryStatement,
   MemorySubDiagram,
@@ -23,9 +24,13 @@ import { monospace } from "@/app/theme";
 import { merge } from "lodash";
 
 import type LeaderLine from "leader-line-new";
+import { CompiledMDX, MDXClient } from "../mdx";
 
 export default function MemoryDiagramView({ content }: PreContent) {
-  const diagram = React.useMemo(() => compileDiagram(content), [content]);
+  const diagram = React.useMemo<MemoryDiagram>(
+    () => JSON.parse(content),
+    [content]
+  );
   const diagramRef = React.useRef<HTMLDivElement | null>(null);
   return (
     <DiagramContext.Provider value={{ diagramRef }}>
@@ -56,6 +61,13 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
   const subdiagramRef = React.useRef<HTMLDivElement | null>(null);
   return (
     <DiagramContext.Provider value={{ diagramRef, subdiagramRef }}>
+      <Box>
+        {(diagram.title || diagram.subtitle) && (
+          <Box mb={2}>
+            <MDXLabel content={diagram.title} />
+            <MDXLabel content={diagram.subtitle} />
+          </Box>
+        )}
       <Box
         className="memory-step"
         display="flex"
@@ -65,7 +77,10 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
         ref={subdiagramRef}
       >
         {diagram.stack.frames.length > 0 && (
-          <Section label={diagram.stack.label} className="memory-section-stack">
+            <Section
+              label={diagram.stack.label}
+              className="memory-section-stack"
+            >
             {diagram.stack.frames.map((frame, idx) => (
               <Frame
                 key={idx}
@@ -81,6 +96,7 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
             <Frame statements={diagram.heap.allocations} section="heap" />
           </Section>
         )}
+        </Box>
       </Box>
     </DiagramContext.Provider>
   );
@@ -90,7 +106,7 @@ function Section({
   label,
   ...rest
 }: BoxProps & {
-  label: string;
+  label: string | CompiledMDX;
 }) {
   const { children, ...boxProps } = rest;
   return (
@@ -100,13 +116,9 @@ function Section({
       height="max-content"
       {...boxProps}
     >
-      <Typography
-        className="memory-header"
-        fontWeight="bold"
-        fontSize="0.95rem"
-      >
-        {label}
-      </Typography>
+      <Box sx={{ "& p": { fontWeight: "bold" } }}>
+        <MDXLabel content={label} />
+      </Box>
       {children}
     </Box>
   );
@@ -346,5 +358,14 @@ function LiteralValueView({ value, path }: ValueProps<"literal">) {
     <Span data-ref={formatLocation(path)} {...value.style?.value}>
       {value.value}
     </Span>
+  );
+}
+
+function MDXLabel({ content }: { content?: string | CompiledMDX }) {
+  if (!content) return null;
+  return typeof content === "string" ? (
+    <Typography>{content}</Typography>
+  ) : (
+    <MDXClient noMargin {...content} />
   );
 }

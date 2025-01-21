@@ -152,7 +152,7 @@ export default function CodeBlock({ options, content }: PreContent) {
   return (
     <Box
       sx={{
-        marginBottom: 2,
+        marginBottom: options.includes("gapless") ? 0 : 2,
         fontFamily: monospace.style.fontFamily,
         fontSize: ".875em",
         backgroundColor: "var(--palette-background-code)",
