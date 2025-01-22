@@ -54,9 +54,13 @@ On completion, we plan for the textbook to have the following contents (may chan
 ## Under Construction
 
 - [x] 📝 Inline quizzes
-- [ ] 💾 Memory diagrams
+- [x] 💾 Memory diagrams
 - [ ] 🧜 [Mermaid](https://mermaid.js.org/) diagrams
 - [x] 📗 Chapter list
 - [x] 🔍 Search
 - [x] 📚 Table of contents
 - [ ] ▶️ Runnable code
+
+## Markdown Guide
+
+This textbook contains some markdown bells and whistles that allow us to do cool stuff. If you plan to contribute to the book, please check out the [styles page](https://cs106l.github.io/textbook/styles) and [its source](https://github.com/cs106l/textbook/blob/main/src/styles.md?plain=1) for inspiration!
