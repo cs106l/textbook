@@ -39,20 +39,20 @@ v.push_back(6); `[]`
 ```memory
 L1 {
   #label subtitle "`v` has a capacity of `5`. In actual practice, the starting capacity of a vector will depend on the compiler."
-  v = vector<int>{ size: 4, capacity: 5, data: &data }
+  v = "vector<int>" { size: 4, capacity: 5, data: &data }
   data => b"1234_"
 }
 
 L2 {
   #label subtitle "`v` has enough remaining capacity to insert `5`, so it gets inserted into `data` at the end of the vector"
-  v = vector<int>{ size: 5, capacity: 5, data: &data }
+  v = "vector<int>" { size: 5, capacity: 5, data: &data }
   data => b"12345"
   #style highlight data[4]
 }
 
 L3 {
   #label subtitle "`v` has run out of space, so it allocates a new block of memory on the heap, copies its elements, and deallocates the old block of memory. Typically, vectors will double their capacity on reallocation, but this is compiler dependent."
-  v = vector<int>{ size: 6, capacity: 10, data: &data }
+  v = "vector<int>" { size: 6, capacity: 10, data: &data }
   old => b"12345"
   data => b"123456____"
   #style { opacity: 0.5 } old

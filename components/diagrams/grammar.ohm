@@ -22,9 +22,10 @@ MemoryDiagram {
   Assignment = identifier Label "=" Value
   Label = ("(" string ")")?
 
-  Value = Object | Array | Pointer | ArrayString | StringLiteral | literal
+  Value = Object | ArrayObject | Array | Pointer | ArrayString | StringLiteral | literal
   
   Object = (identifier | string)? "{" ListOf<ObjectField, ","> "}"
+  ArrayObject = (identifier | string)? "[" ListOf<ObjectField, ","> "]"
   ObjectField = identifier Label ":" Value
 
   Array = "[" ListOf<Value, ","> "]"
@@ -57,13 +58,13 @@ MemoryDiagram {
   MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice | ".*")*
   LocationSlice = "[" int? ":" int? (":" int?)? "]"
   
-  cssClass = (alnum | "_" | "-")+
+  cssClass = (alnum | "_" | "-" | "#")+
   
   /*
    * Utilities and simple JSON parser
    */ 
    
-  identifier = (alnum | "_" | "<" | ">" )+
+  identifier = (alnum | "_" )+
   
   string = "\"" char* "\""
   char = nonEscape | escape

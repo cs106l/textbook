@@ -18,13 +18,15 @@ export type DiagramText = {
 export type MemorySection = {
   label?: StyledLabel;
   frames: MemoryFrame[];
-  fields?: boolean;
+  type: SectionType;
 };
 
-export type MemoryFrame = {
-  name?: string;
-  value: ObjectValue;
-};
+export enum SectionType {
+  Stack,
+  Heap,
+}
+
+export type MemoryFrame = MemoryValue & { kind: "object"; name?: string };
 
 export type MemoryValue = { style?: ValueStyle } & (
   | LiteralValue
@@ -47,6 +49,7 @@ export type ObjectValue = {
   kind: "object";
   label?: string;
   value: ObjectField[];
+  fields?: boolean;
 };
 
 export type ObjectField = {

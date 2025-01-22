@@ -27,6 +27,7 @@ export interface MemoryDiagramActionDict<T> extends BaseActionDict<T> {
   Label?: (this: NonterminalNode, arg0: IterationNode, arg1: IterationNode, arg2: IterationNode) => T;
   Value?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   Object?: (this: NonterminalNode, arg0: IterationNode, arg1: TerminalNode, arg2: NonterminalNode, arg3: TerminalNode) => T;
+  ArrayObject?: (this: NonterminalNode, arg0: IterationNode, arg1: TerminalNode, arg2: NonterminalNode, arg3: TerminalNode) => T;
   ObjectField?: (this: NonterminalNode, arg0: NonterminalNode, arg1: NonterminalNode, arg2: TerminalNode, arg3: NonterminalNode) => T;
   Array?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: TerminalNode) => T;
   Pointer?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode) => T;

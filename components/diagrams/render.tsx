@@ -6,12 +6,12 @@ import { formatLocation, mergeNodeStyles } from "./compile";
 import {
   DiagramText,
   MemoryDiagram,
-  MemoryFrame,
   MemoryLocation,
   MemorySection,
   MemorySubDiagram,
   MemoryValue,
   NodeStyle,
+  SectionType,
   StyledLabel,
 } from "./types";
 
@@ -89,35 +89,30 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
   );
 }
 
-function Section({ section }: { section: MemorySection }) {
+function Section({
+  section: { label, type, frames },
+}: {
+  section: MemorySection;
+}) {
+  label ??= { label: type === SectionType.Stack ? "Stack" : "Heap" };
   return (
     <Box border={`1px dashed ${borderColor}`} padding={1} height="max-content">
       <MDXLabel
-        label={section.label}
-        sx={{ marginBottom: 0.5, "& p": { fontWeight: "bold" } }}
+        label={label}
+        sx={{ marginBottom: 0.5, "&, & *": { fontWeight: "bold" } }}
       />
-      <Stack spacing={0.5} alignItems="center">
-        {section.frames.map((frame, idx) => (
-          <Frame key={idx} section={section} frame={frame} />
-        ))}
+      <Stack alignItems="center">
+        <Stack spacing={0.5}>
+          {frames.map((frame, idx) => (
+            <ObjectValueView
+              key={idx}
+              value={{ ...frame, label: frame.label ?? frame.name }}
+              path={frame.name ? [frame.name] : []}
+            />
+          ))}
+        </Stack>
       </Stack>
     </Box>
-  );
-}
-
-function Frame({
-  section,
-  frame,
-}: {
-  section: MemorySection;
-  frame: MemoryFrame;
-}) {
-  return (
-    <ObjectValueView
-      value={frame.value}
-      path={frame.name ? [frame.name] : []}
-      fields={section.fields}
-    />
   );
 }
 
@@ -145,12 +140,13 @@ function ValueView(props: ValueProps<string>) {
     case "literal":
       return <LiteralValueView {...props} value={value} />;
     case "object":
-      return <ObjectValueView {...props} value={value} fields={true} />;
+      return <ObjectValueView {...props} value={value} />;
     case "pointer":
       return <PointerValueView {...props} value={value} />;
   }
 }
 
+const TBody = styled("tbody")``;
 const Tr = styled("tr")``;
 const Td = styled("td")``;
 const Span = styled("span")``;
@@ -180,10 +176,10 @@ function ArrayValueView({
             },
           },
         },
-        style?.value
+        style?.node
       )}
     >
-      <tbody>
+      <TBody {...style?.value}>
         <Tr data-ref={formatLocation(path)}>
           {value.map((elem, idx) => (
             <Td key={idx} data-connector="bottom" {...elem.style?.node}>
@@ -195,16 +191,15 @@ function ArrayValueView({
             </Td>
           ))}
         </Tr>
-      </tbody>
+      </TBody>
     </Box>
   );
 }
 
 function ObjectValueView({
-  value: { label, value, style },
+  value: { label, value, style, fields },
   path,
-  fields,
-}: ValueProps<"object"> & { fields?: boolean }) {
+}: ValueProps<"object">) {
   return (
     <Box
       fontFamily={monospace.style.fontFamily}
@@ -223,11 +218,11 @@ function ObjectValueView({
               paddingY: "2px",
             },
           },
-          style?.value
+          style?.node
         )}
         data-ref={value.length === 0 ? formatLocation(path) : undefined}
       >
-        <tbody>
+        <TBody {...style?.value}>
           {value.map(({ name, label, value: elem }, idx) => (
             <Tr
               key={idx}
@@ -240,7 +235,7 @@ function ObjectValueView({
               </Td>
             </Tr>
           ))}
-        </tbody>
+        </TBody>
       </Box>
     </Box>
   );
@@ -306,11 +301,13 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
   return (
     <Span
       data-ref={formatLocation(path)}
-      data-connector="right"
+      data-connector={
+        typeof path[path.length - 1] === "number" ? "bottom" : "right"
+      }
       ref={src}
       {...value.style?.value}
     >
-      {value.value !== null ? "●" : "⦻"}
+      {value.value !== null ? "●" : "⦾"}
     </Span>
   );
 }

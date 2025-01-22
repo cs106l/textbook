@@ -10,12 +10,13 @@ import {
   ObjectField,
   MemorySection,
   DiagramText,
+  SectionType,
 } from "./types";
 
 import { mergeSx } from "merge-sx";
 
 import grammar from "./grammar.ohm-bundle";
-import { Interval } from "ohm-js";
+import { Interval, NonterminalNode } from "ohm-js";
 import { merge } from "lodash";
 import { serializeMDX } from "../mdx";
 
@@ -103,15 +104,13 @@ function locateLabels(
     diagram.text ??= {};
     return [(diagram.text[labelLocation as keyof DiagramText] ??= {})];
   }
-  // "stack" refers to any section that has fields
   if (labelLocation === "stack")
     return diagram.sections
-      .filter((s) => s.fields)
+      .filter((s) => s.type === SectionType.Stack)
       .map((s) => (s.label ??= {}));
-  // "heap" refers to any section that has no fields
   if (labelLocation === "heap")
     return diagram.sections
-      .filter((s) => !s.fields)
+      .filter((s) => s.type === SectionType.Heap)
       .map((s) => (s.label ??= {}));
 
   // =>, ==>, etc. refer to the labels of their corresponding sections
@@ -161,10 +160,8 @@ function locateValues(
   const globals: GlobalsMap = new Map();
   for (const section of diagram.sections) {
     for (const frame of section.frames) {
-      if (frame.name) globals.set(frame.name, frame.value);
-      else
-        for (const { name, value } of frame.value.value)
-          globals.set(name, value);
+      if (frame.name) globals.set(frame.name, frame);
+      else for (const { name, value } of frame.value) globals.set(name, value);
     }
   }
 
@@ -225,21 +222,34 @@ function locateValuesRec(
 
   /* Universal member access */
   if (segment === "*") {
-    if (parent.kind !== "object")
-      return fail(`cannot take universal access (*) of non-object value {}`);
-
-    for (const { name, value } of parent.value) {
-      locateValuesRec(
-        globals,
-        loc,
-        idx + 1,
-        values,
-        source,
-        [...parentPath, name],
-        value
+    if (parent.kind === "object") {
+      for (const { name, value } of parent.value) {
+        locateValuesRec(
+          globals,
+          loc,
+          idx + 1,
+          values,
+          source,
+          [...parentPath, name],
+          value
+        );
+      }
+    } else if (parent.kind === "array") {
+      for (let arrIdx = 0; arrIdx < parent.value.length; arrIdx++) {
+        locateValuesRec(
+          globals,
+          loc,
+          idx + 1,
+          values,
+          source,
+          [...parentPath, arrIdx],
+          parent.value[arrIdx]
+        );
+      }
+    } else
+      fail(
+        `Cannot take universal member access (*) of non-array, non-object value {} of type ${parent.kind}`
       );
-    }
-
     return;
   }
 
@@ -417,8 +427,7 @@ function buildSections(
   for (const depth of [...sectionDepths].sort()) {
     sections.push({
       frames: [],
-      fields: depth === 0,
-      label: { label: depth === 0 ? "Stack" : "Heap" },
+      type: depth === 0 ? SectionType.Stack : SectionType.Heap,
     });
     if (depth === 0) sectionLabels.set("=", index);
     else sectionLabels.set(`${"=".repeat(depth)}>`, index);
@@ -480,31 +489,29 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
       const getOrCreateFrame = (line?: StatementLine): MemoryFrame => {
         if (!line || line.depth === 0) {
           if (_stackFrame) return _stackFrame;
-          const stackSection = sections.find((s) => s.fields);
-          if (!stackSection)
-            throw new Error("Internal error: missing stack section");
+          const stack = sections.find((s) => s.type === SectionType.Stack);
+          if (!stack) throw new Error("Internal error: missing stack section");
           _stackFrame = {
+            kind: "object",
+            fields: true,
             name: block.name,
-            value: {
-              kind: "object",
-              label: block.label ?? block.name,
-              value: [],
-            },
+            label: block.label,
+            value: [],
           };
-          stackSection.frames.push(_stackFrame);
+          stack.frames.push(_stackFrame);
           return _stackFrame;
         }
 
         const sectionIdx = sectionLabels.get(line.symbol);
         if (!sectionIdx)
           throw new Error(
-            `Internal error: missing section index for statement symbol ${line.symbol}`
+            `Internal error: missing heap section index for statement symbol ${line.symbol}`
           );
 
-        const section = sections[sectionIdx];
-        if (section.frames.length === 0)
-          section.frames.push({ value: { kind: "object", value: [] } });
-        return section.frames[0];
+        const heap = sections[sectionIdx];
+        if (heap.frames.length === 0)
+          heap.frames.push({ kind: "object", value: [] });
+        return heap.frames[0];
       };
 
       // Every named frame should appear, even if it's empty
@@ -524,7 +531,7 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
         }
 
         const frame = getOrCreateFrame(line);
-        frame.value.value.push(line.field);
+        frame.value.push(line.field);
 
         // Ensure that values of unnamed frames pollute the global scope
         if (!block.name) addGlobal(line.field.name, source);
@@ -647,31 +654,45 @@ semantics.addOperation<ObjectField>("toObjectField()", {
   },
 });
 
+function getFields(fieldsList: NonterminalNode) {
+  const fieldInfos = fieldsList.asIteration().children.map((n) => ({
+    field: n.toObjectField() as ObjectField,
+    source: n.source,
+  }));
+
+  // Check uniqueness of field names
+  const names = new Set<string>();
+  for (const {
+    field: { name },
+    source,
+  } of fieldInfos) {
+    if (names.has(name))
+      parseError(`Duplicate field name in object expression "${name}"`, source);
+    names.add(name);
+  }
+
+  return fieldInfos.map((fi) => fi.field);
+}
+
 semantics.addOperation<MemoryValue>("toValue()", {
   Value(val) {
     return val.toValue();
   },
 
-  Object(type, _, fieldsList, __) {
-    const fields: ObjectField[] = fieldsList
-      .asIteration()
-      .children.map((n) => n.toObjectField());
-
-    // Check uniqueness of field names
-    const names = new Set<string>();
-    for (const { name } of fields) {
-      if (names.has(name))
-        parseError(
-          `Duplicate field name in object expression "${name}"`,
-          this.source
-        );
-      names.add(name);
-    }
-
+  Object(label, _, fieldsList, __) {
     return {
       kind: "object",
-      label: type.numChildren > 0 ? type.child(0).asString() : undefined,
-      value: fields,
+      fields: true,
+      label: label.numChildren > 0 ? label.child(0).asString() : undefined,
+      value: getFields(fieldsList),
+    };
+  },
+
+  ArrayObject(label, _, fieldsList, __) {
+    return {
+      kind: "object",
+      label: label.numChildren > 0 ? label.child(0).asString() : undefined,
+      value: getFields(fieldsList),
     };
   },
 
@@ -708,11 +729,11 @@ semantics.addOperation<MemoryValue>("toValue()", {
   },
 
   literal(contents) {
-    if (contents.sourceString === "null")
-      return { kind: "pointer", value: null };
+    const value = contents.sourceString.trim();
+    if (value === "null") return { kind: "pointer", value: null };
     return {
       kind: "literal",
-      value: contents.sourceString.trim(),
+      value,
     };
   },
 });
