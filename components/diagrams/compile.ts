@@ -1,12 +1,14 @@
 import {
-  MemoryStatement,
   MemoryDiagram,
   MemoryLocation,
   MemoryValue,
   ValueStyle,
   MemorySubDiagram,
   NodeStyle,
-  DiagramLabels,
+  StyledLabel,
+  MemoryFrame,
+  ObjectField,
+  MemorySection,
 } from "./types";
 
 import { mergeSx } from "merge-sx";
@@ -23,35 +25,44 @@ export default async function compileDiagram(
   if (result.failed()) parseError(result.message);
   const diagram: MemoryDiagram = semantics(result).toDiagram();
 
-  // Compile markdown fragments using remote-mdx
+  // Compile text markdown fragments using remote-mdx
+  const compileLabel = async (label?: StyledLabel) => {
+    if (!label) return;
+    if (typeof label.label === "string")
+      label.label = await serializeMDX(label.label);
+  };
+
   for (const subdiagram of diagram) {
-    for (const label of Object.values(subdiagram.labels)) {
-      if (typeof label?.label === "string")
-        label.label = await serializeMDX(label.label);
-    }
+    if (!subdiagram.text) continue;
+    for (const label of Object.values(subdiagram.text))
+      await compileLabel(label);
+    for (const section of subdiagram.sections)
+      await compileLabel(section.label);
   }
 
   return diagram;
 }
 
+function getSourceContext(source?: Interval): string {
+  if (!source) return "";
+  const { lineNum, colNum } = source.getLineAndColumn();
+  return ` at line ${lineNum}, column ${colNum}`;
+}
+
 function parseError(message: string = "", source?: Interval): never {
-  const context = (() => {
-    if (!source) return "";
-    const { lineNum, colNum } = source.getLineAndColumn();
-    return ` at line ${lineNum}, column ${colNum}`;
-  })();
+  const context = getSourceContext(source);
   throw new Error(`Error parsing diagram${context}:\n\n${message}`);
 }
 
 function processDirective(
   diagram: MemorySubDiagram,
   directive: Directive,
+  sectionLabels: SectionLabelsMap,
   source: Interval
 ) {
   if (directive.kind === "label") {
-    if (diagram.labels[directive.section])
-      diagram.labels[directive.section]!.label = directive.label;
-    else diagram.labels[directive.section] = { label: directive.label };
+    const labels = locateLabels(diagram, directive.section, sectionLabels);
+    labels.forEach((l) => (l.label = directive.label));
     return;
   }
 
@@ -60,18 +71,44 @@ function processDirective(
       const values = locateValues(diagram, directive.location, source);
       values.forEach((v) => (v.style = mergeStyles(v.style, directive.style)));
     } else {
-      if (!diagram.labels[directive.location])
-        diagram.labels[directive.location] = { label: "" };
-      diagram.labels[directive.location]!.style = mergeNodeStyles(
-        diagram.labels[directive.location]!.style,
-        directive.style
+      const labels = locateLabels(diagram, directive.location, sectionLabels);
+      labels.forEach(
+        (l) => (l.style = mergeNodeStyles(l.style, directive.style))
       );
     }
   }
 
   if (directive.kind === "layout") {
-    diagram.layout = directive.layout;
+    // Currently the #layout directive can only do one thing,
+    // but may consider expanding this in the future
+    diagram.wide = true;
   }
+}
+
+/** Given a section label of the form '=>', '==>', tracks the corresponding section index in `subdiagram.sections` */
+type SectionLabelsMap = Map<string, number>;
+
+function locateLabels(
+  diagram: MemorySubDiagram,
+  labelLocation: string,
+  sectionLabels: SectionLabelsMap
+): StyledLabel[] {
+  return ((): (StyledLabel | undefined)[] => {
+    if (labelLocation === "title") return [diagram.text?.title];
+    if (labelLocation === "subtitle") return [diagram.text?.subtitle];
+    // "stack" refers to any section that has fields
+    if (labelLocation === "stack")
+      return diagram.sections.filter((s) => s.fields).map((s) => s.label);
+    // "heap" refers to any section that has no fields
+    if (labelLocation === "heap")
+      return diagram.sections.filter((s) => !s.fields).map((s) => s.label);
+
+    // =>, ==>, etc. refer to the labels of their corresponding sections
+    const idx = sectionLabels.get(labelLocation);
+    if (!idx) return [];
+    if (idx < 0 || idx >= diagram.sections.length) return [];
+    return [diagram.sections[idx].label];
+  })().filter((sl) => sl !== undefined);
 }
 
 export function mergeNodeStyles(
@@ -102,24 +139,32 @@ function mergeStyles(
   };
 }
 
+/** Given a (global) variable name, returns the corresponding value */
+type GlobalsMap = Map<string, MemoryValue>;
+
 function locateValues(
   diagram: MemorySubDiagram,
   loc: MemoryLocationSliced,
   source?: Interval
 ): MemoryValue[] {
-  const variables = new Map<string, MemoryValue>();
-  diagram.stack.forEach((f) =>
-    f.statements.forEach((s) => variables.set(s.variable, s.value))
-  );
-  diagram.heap.forEach((s) => variables.set(s.variable, s.value));
+  /* First determine global values for this section */
+  const globals: GlobalsMap = new Map();
+  for (const section of diagram.sections) {
+    for (const frame of section.frames) {
+      if (frame.name) globals.set(frame.name, frame.value);
+      else
+        for (const { name, value } of frame.value.value)
+          globals.set(name, value);
+    }
+  }
 
   const values: MemoryValue[] = [];
-  locateValuesRec(variables, loc, 0, values, source);
+  locateValuesRec(globals, loc, 0, values, source);
   return values;
 }
 
 function locateValuesRec(
-  variables: Map<string, MemoryValue>,
+  globals: GlobalsMap,
   loc: MemoryLocationSliced,
   idx: number,
   values: MemoryValue[],
@@ -144,7 +189,7 @@ function locateValuesRec(
       throw new Error(
         `Internal error: first part of ${formatLocation(loc)} is not a variable`
       );
-    const variable = variables.get(loc[0]);
+    const variable = globals.get(loc[0]);
     if (!variable)
       return parseError(
         `Variable ${loc[0]} referenced by &${formatLocation(
@@ -153,7 +198,7 @@ function locateValuesRec(
         source
       );
     return locateValuesRec(
-      variables,
+      globals,
       loc,
       idx + 1,
       values,
@@ -172,17 +217,17 @@ function locateValuesRec(
   if (typeof segment === "string") {
     if (parent.kind !== "object")
       return fail(`cannot reference field "${segment}" of non-object value {}`);
-    const nextValue = parent.value.find(([key]) => key === segment);
+    const nextValue = parent.value.find(({ name }) => name === segment);
     if (!nextValue)
       return fail(`field "${segment}" does not exist in object {}`);
     return locateValuesRec(
-      variables,
+      globals,
       loc,
       idx + 1,
       values,
       source,
       [...parentPath, segment],
-      nextValue[1]
+      nextValue.value
     );
   }
 
@@ -197,7 +242,7 @@ function locateValuesRec(
         `index ${segment} is out of bounds for array {} of length ${length}`
       );
     return locateValuesRec(
-      variables,
+      globals,
       loc,
       idx + 1,
       values,
@@ -231,7 +276,7 @@ function locateValuesRec(
 
     for (const sliceIdx of indices) {
       locateValuesRec(
-        variables,
+        globals,
         loc,
         idx + 1,
         values,
@@ -270,10 +315,21 @@ function formatSlice(l: LocationSlice): string {
 /* Helper types for compilation                                              */
 /* ========================================================================= */
 
-type Line = StatementLine | DirectiveLine | FrameHeaderLine;
-type StatementLine = { kind: "statement"; statement: MemoryStatement };
+type Line = StatementLine | DirectiveLine;
+type StatementLine = {
+  kind: "statement";
+  symbol: string;
+  depth: number;
+  field: ObjectField;
+};
 type DirectiveLine = { kind: "directive"; directive: Directive };
-type FrameHeaderLine = { kind: "frame"; label: string };
+type LineInfo = { line: Line; source: Interval };
+type BasicBlock = {
+  name?: string;
+  label?: string;
+  lines: LineInfo[];
+  source: Interval;
+};
 
 type MemoryLocationSliced = (string | number | LocationSlice)[];
 type LocationSlice = { start?: number; end?: number; stride?: number };
@@ -281,7 +337,7 @@ type LocationSlice = { start?: number; end?: number; stride?: number };
 type Directive = LabelDirective | StyleDirective | LayoutDirective;
 type LabelDirective = {
   kind: "label";
-  section: keyof DiagramLabels;
+  section: string;
   label: string;
 };
 type StyleDirective = NodeStyleDirective | LabelStyleDirective;
@@ -294,7 +350,7 @@ type NodeStyleDirective = {
 type LabelStyleDirective = {
   kind: "style";
   type: "label";
-  location: keyof DiagramLabels;
+  location: string;
   style: NodeStyle;
 };
 type LayoutDirective = {
@@ -308,6 +364,39 @@ type LayoutDirective = {
 
 const semantics = grammar.createSemantics();
 
+function buildSections(
+  blocks: BasicBlock[]
+): [MemorySection[], SectionLabelsMap] {
+  const sections: MemorySection[] = [];
+  const sectionLabels: SectionLabelsMap = new Map();
+
+  const sectionDepths = new Set<number>(
+    blocks.flatMap((b) =>
+      b.lines
+        .map((l) => l.line)
+        .filter((l) => l.kind === "statement")
+        .map((l) => l.depth)
+    )
+  );
+
+  // Named blocks guarantee the existence of a stack section
+  blocks.forEach((b) => b.name && sectionDepths.add(0));
+
+  let index = 0;
+  for (const depth of [...sectionDepths].sort()) {
+    sections.push({
+      frames: [],
+      fields: depth === 0,
+      label: { label: depth === 0 ? "Stack" : "Heap" },
+    });
+    if (depth === 0) sectionLabels.set("=", index);
+    else sectionLabels.set(`${"=".repeat(depth)}>`, index);
+    index++;
+  }
+
+  return [sections, sectionLabels];
+}
+
 semantics.addOperation<MemoryDiagram>("toDiagram()", {
   Diagram_multi(subdiagrams) {
     return subdiagrams.children.map((n) => n.toSubDiagram());
@@ -319,72 +408,95 @@ semantics.addOperation<MemoryDiagram>("toDiagram()", {
 });
 
 semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
-  SubDiagram(identifier, _, lines, __) {
-    const diagram: MemorySubDiagram = lines.toSubDiagram();
+  SubDiagram(identifier, _, frames, __) {
+    const diagram: MemorySubDiagram = frames.toSubDiagram();
     return {
       // Format title with `` so it looks like code by default
       ...diagram,
-      labels: {
+      text: {
         title: { label: `\`${identifier.asString()}\`` },
-        ...diagram.labels,
+        ...diagram.text,
       },
     };
   },
 
-  Lines(node) {
-    type LineInfo = { line: Line; source: Interval };
-    const lines: LineInfo[] = node.children.map((n) => ({
-      line: n.toLine(),
-      source: n.source,
-    }));
+  Frames(orphanLines, frames) {
+    const orphanBlock: BasicBlock = orphanLines.toBasicBlock();
+    const blocks: BasicBlock[] = [
+      orphanBlock,
+      ...frames.children.map((n) => n.toBasicBlock()),
+    ];
 
-    const diagram: MemorySubDiagram = {
-      stack: [],
-      heap: [],
-      layout: "fit-content",
-      labels: {
-        stack: { label: "Stack" },
-        heap: { label: "Heap" },
-      },
-    };
+    const [sections, sectionLabels] = buildSections(blocks);
+    const diagram: MemorySubDiagram = { sections };
+    const globals = new Map<string, Interval>();
+    const directives: LineInfo[] = [];
 
-    const variables = new Set<string>();
-
-    for (const { line, source } of lines) {
-      if (line.kind === "directive") continue;
-
-      // Check to see if this is the start of a new frame
-      if (line.kind === "frame") {
-        diagram.stack.push({
-          label: line.label,
-          statements: [],
-        });
-        continue;
-      }
-
-      // Verify the uniqueness of this variable
-      if (variables.has(line.statement.variable))
+    const addGlobal = (name: string, source: Interval) => {
+      if (globals.has(name))
         parseError(
-          `Variable ${line.statement.variable} is already used. ` +
-            `You can change the displayed name of the variable by using a label, ` +
-            `e.g. "${line.statement.variable}(label) = ..."`,
+          `A variable or frame with name ${name} was already defined${getSourceContext(
+            globals.get(name)
+          )}`,
           source
         );
+      globals.set(name, source);
+    };
 
-      variables.add(line.statement.variable);
-
-      if (line.statement.label) {
-        // Assignment in stack frame
-        // Make sure there is a frame available
-        if (diagram.stack.length === 0) {
-          diagram.stack.push({ statements: [] });
+    for (const block of blocks) {
+      // The frame for this block. May not exist yet
+      let _stackFrame: MemoryFrame | null = null;
+      const getOrCreateFrame = (line?: StatementLine): MemoryFrame => {
+        if (!line || line.depth === 0) {
+          if (_stackFrame) return _stackFrame;
+          const stackSection = sections.find((s) => s.fields);
+          if (!stackSection)
+            throw new Error("Internal error: missing stack section");
+          _stackFrame = {
+            name: block.name,
+            value: {
+              kind: "object",
+              label: block.label ?? block.name,
+              value: [],
+            },
+          };
+          stackSection.frames.push(_stackFrame);
+          return _stackFrame;
         }
 
-        const frame = diagram.stack[diagram.stack.length - 1];
-        frame.statements.push(line.statement);
-      } else {
-        // Allocation on heap
-        diagram.heap.push(line.statement);
+        const sectionIdx = sectionLabels.get(line.symbol);
+        if (!sectionIdx)
+          throw new Error(
+            `Internal error: missing section index for statement symbol ${line.symbol}`
+          );
+
+        const section = sections[sectionIdx];
+        if (section.frames.length === 0)
+          section.frames.push({ value: { kind: "object", value: [] } });
+        return section.frames[0];
+      };
+
+      // Every named frame should appear, even if it's empty
+      // Note that this is not true for the orphan frame, which is allocated on demand
+      //
+      // In addition, named frames pollute the global scope
+      if (block.name) {
+        getOrCreateFrame();
+        addGlobal(block.name, block.source);
+      }
+
+      for (const lineInfo of block.lines) {
+        const { line, source } = lineInfo;
+        if (line.kind === "directive") {
+          directives.push(lineInfo);
+          continue;
+        }
+
+        const frame = getOrCreateFrame(line);
+        frame.value.value.push(line.field);
+
+        // Ensure that values of unnamed frames pollute the global scope
+        if (!block.name) addGlobal(line.field.name, source);
       }
     }
 
@@ -392,13 +504,7 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
      * Semantic analysis of diagram statements.
      * This basically verifies that all pointers point to valid locations.
      */
-    const analyzeValue = (
-      statement: MemoryStatement,
-      source: Interval,
-      value?: MemoryValue
-    ): void => {
-      if (!value) value = statement.value;
-
+    const analyzeValue = (value: MemoryValue, source: Interval): void => {
       if (value.kind === "pointer") {
         if (value.value === null) return;
         locateValues(diagram, value.value, source);
@@ -406,31 +512,55 @@ semantics.addOperation<MemorySubDiagram>("toSubDiagram()", {
       }
 
       if (value.kind === "array") {
-        value.value.forEach((v) => analyzeValue(statement, source, v));
+        value.value.forEach((value) => analyzeValue(value, source));
         return;
       }
 
       if (value.kind === "object") {
-        value.value.forEach((v) => analyzeValue(statement, source, v[1]));
+        value.value.forEach(({ value }) => analyzeValue(value, source));
         return;
       }
     };
 
-    lines.forEach(({ line, source }) => {
-      if (line.kind !== "statement") return;
-      analyzeValue(line.statement, source);
-    });
+    blocks.forEach((block) =>
+      block.lines.forEach(({ line, source }) => {
+        if (line.kind !== "statement") return;
+        analyzeValue(line.field.value, source);
+      })
+    );
 
     /*
      * Process diagram directives
      * Each directive applies one modification to the diagram
      */
-    for (const { line, source } of lines) {
+    for (const { line, source } of directives) {
       if (line.kind !== "directive") continue;
-      processDirective(diagram, line.directive, source);
+      processDirective(diagram, line.directive, sectionLabels, source);
     }
 
     return diagram;
+  },
+});
+
+semantics.addOperation<BasicBlock>("toBasicBlock()", {
+  Frame(identifier, label, _, lines) {
+    const block: BasicBlock = lines.toBasicBlock();
+    return {
+      name: identifier.asString(),
+      label: label.asLabelString(),
+      lines: block.lines,
+      source: this.source,
+    };
+  },
+
+  Lines(lines) {
+    return {
+      lines: lines.children.map((n) => ({
+        line: n.toLine(),
+        source: n.source,
+      })),
+      source: this.source,
+    };
   },
 });
 
@@ -439,10 +569,32 @@ semantics.addOperation<Line>("toLine()", {
     return node.toLine();
   },
 
-  Statement(_) {
+  Statement(node) {
+    return node.toLine();
+  },
+
+  Allocation(identifier, symbol, value) {
     return {
       kind: "statement",
-      statement: this.toStatement(),
+      symbol: symbol.sourceString,
+      depth: symbol.sourceString.length - 1,
+      field: {
+        name: identifier.asString(),
+        value: value.toValue(),
+      },
+    };
+  },
+
+  Assignment(identifier, label, symbol, value) {
+    return {
+      kind: "statement",
+      symbol: symbol.sourceString,
+      depth: 0,
+      field: {
+        name: identifier.asString(),
+        label: label.asLabelString(),
+        value: value.toValue(),
+      },
     };
   },
 
@@ -452,35 +604,14 @@ semantics.addOperation<Line>("toLine()", {
       directive: this.toDirective(),
     };
   },
-
-  FrameHeader(identifier, _) {
-    return {
-      kind: "frame",
-      label: identifier.asString(),
-    };
-  },
 });
 
-semantics.addOperation<MemoryStatement>("toStatement()", {
-  Statement(node) {
-    return node.toStatement();
-  },
-
-  Allocation(identifier, _, value) {
+semantics.addOperation<ObjectField>("toObjectField()", {
+  ObjectField(identifier, label, _, value) {
     return {
-      variable: identifier.asString(),
+      name: identifier.asString(),
+      label: label.asLabelString(),
       value: value.toValue(),
-      source: { source: "", no: -1 },
-    };
-  },
-
-  Assignment(identifier, label, _, value) {
-    const variable = identifier.asString();
-    return {
-      variable,
-      label: label.numChildren > 0 ? label.child(0).asString() : variable,
-      value: value.toValue(),
-      source: { source: "", no: -1 },
     };
   },
 });
@@ -490,14 +621,14 @@ semantics.addOperation<MemoryValue>("toValue()", {
     return val.toValue();
   },
 
-  Object(type, _, fields, __) {
-    const pairs: [string, MemoryValue][] = fields
+  Object(type, _, fieldsList, __) {
+    const fields: ObjectField[] = fieldsList
       .asIteration()
-      .children.map((n) => n.toPair());
+      .children.map((n) => n.toObjectField());
 
     // Check uniqueness of field names
     const names = new Set<string>();
-    for (const [name] of pairs) {
+    for (const { name } of fields) {
       if (names.has(name))
         parseError(
           `Duplicate field name in object expression "${name}"`,
@@ -508,8 +639,8 @@ semantics.addOperation<MemoryValue>("toValue()", {
 
     return {
       kind: "object",
-      type: type.numChildren > 0 ? type.child(0).asString() : undefined,
-      value: pairs,
+      label: type.numChildren > 0 ? type.child(0).asString() : undefined,
+      value: fields,
     };
   },
 
@@ -560,10 +691,6 @@ semantics.addOperation<string>("asString()", {
     return chars.sourceString;
   },
 
-  Label(_, identifier, __) {
-    return identifier.asString();
-  },
-
   cssClass(chars) {
     return chars.sourceString;
   },
@@ -575,6 +702,13 @@ semantics.addOperation<string>("asString()", {
         return c;
       })
       .join("");
+  },
+});
+
+semantics.addOperation<string | undefined>("asLabelString()", {
+  Label(_, identifier, __) {
+    if (identifier.numChildren === 0) return undefined;
+    return identifier.child(0).asString();
   },
 });
 
@@ -595,12 +729,6 @@ semantics.addOperation<string[]>("toCharArray()", {
     const char = node.sourceString;
     if (char === "\\") return [char];
     return [`\\${char}`];
-  },
-});
-
-semantics.addOperation<[string, MemoryValue]>("toPair()", {
-  Pair(identifier, _, value) {
-    return [identifier.asString(), value.toValue()];
   },
 });
 
@@ -691,7 +819,7 @@ semantics.addOperation<Directive>("toDirective()", {
     return {
       kind: "style",
       type: "label",
-      location: location.sourceString as keyof DiagramLabels,
+      location: location.sourceString,
       style: style.toNodeStyle(),
     };
   },

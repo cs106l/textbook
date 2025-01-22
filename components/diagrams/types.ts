@@ -1,37 +1,29 @@
-import { SxProps } from "@mui/material";
+import { SxProps, Theme } from "@mui/material";
 import LeaderLine from "leader-line-new";
 import { CompiledMDX } from "../mdx";
 
 export type MemoryDiagram = MemorySubDiagram[];
 
 export type MemorySubDiagram = {
-  labels: DiagramLabels;
-  stack: MemoryFrame[];
-  heap: MemoryStatement[];
-  layout: "fit-content" | "wide";
+  text?: DiagramText;
+  sections: MemorySection[];
+  wide?: boolean;
 };
 
-export type StyledLabel = {
-  label: string | CompiledMDX;
-  style?: NodeStyle;
-};
-
-export type DiagramLabels = {
-  stack?: StyledLabel;
-  heap?: StyledLabel;
+export type DiagramText = {
   title?: StyledLabel;
   subtitle?: StyledLabel;
 };
 
-export type MemoryFrame = {
-  label?: string;
-  statements: MemoryStatement[];
+export type MemorySection = {
+  label?: StyledLabel;
+  frames: MemoryFrame[];
+  fields?: boolean;
 };
 
-export type MemoryStatement = {
-  label?: string;
-  variable: string;
-  value: MemoryValue;
+export type MemoryFrame = {
+  name?: string;
+  value: ObjectValue;
 };
 
 export type MemoryValue = { style?: ValueStyle } & (
@@ -53,8 +45,14 @@ export type ArrayValue = {
 
 export type ObjectValue = {
   kind: "object";
-  type?: string;
-  value: (readonly [string, MemoryValue])[];
+  label?: string;
+  value: ObjectField[];
+};
+
+export type ObjectField = {
+  name: string;
+  label?: string;
+  value: MemoryValue;
 };
 
 export type PointerValue = {
@@ -74,5 +72,10 @@ export type ValueStyle = {
 
 export type NodeStyle = {
   className?: string;
-  sx?: SxProps;
+  sx?: SxProps<Theme>;
+};
+
+export type StyledLabel = {
+  label?: string | CompiledMDX;
+  style?: NodeStyle;
 };

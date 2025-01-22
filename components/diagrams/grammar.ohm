@@ -5,24 +5,27 @@ MemoryDiagram {
    
    Diagram 
     = SubDiagram+ --multi
-    | Lines       --single
-   SubDiagram = identifier "{" Lines "}"
+    | Frames       --single
+   SubDiagram = identifier "{" Frames "}"
+   Frames = Lines Frame*
+   Frame = identifier Label ":" Lines
    Lines = Line*
-   Line = Statement | Directive | FrameHeader
-   FrameHeader = identifier ":"
+   Line = Statement | Directive
+    
 
   /* 
    * Statements: assignments and allocations
    */
   Statement = (Allocation | Assignment)
-  Allocation = identifier "=>" Value
-  Assignment = identifier Label? "=" Value
-  Label = "(" string ")"
+  Allocation = identifier heapSymbol Value
+  heapSymbol = "="+ ">"
+  Assignment = identifier Label "=" Value
+  Label = ("(" string ")")?
 
   Value = Object | Array | Pointer | ArrayString | StringLiteral | literal
   
-  Object = identifier? "{" ListOf<Pair, ","> "}"
-  Pair = identifier ":" Value
+  Object = identifier? "{" ListOf<ObjectField, ","> "}"
+  ObjectField = identifier Label ":" Value
 
   Array = "[" ListOf<Value, ","> "]"
   
@@ -41,7 +44,7 @@ MemoryDiagram {
   Directive = LabelDirective | StyleDirective | LayoutDirective
     
   LabelDirective = "#label" (LabelLocation) string
-  LabelLocation = "stack" | "heap" | "title" | "subtitle"
+  LabelLocation = "stack" | "heap" | "title" | "subtitle" | heapSymbol
     
   StyleDirective = "#style" (LabelStyle | NodeStyles | LinkStyle)
   LabelStyle = "label:" LabelLocation Styles

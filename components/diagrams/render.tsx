@@ -4,22 +4,23 @@ import React from "react";
 import { PreContent } from "../pre";
 import { formatLocation, mergeNodeStyles } from "./compile";
 import {
+  DiagramText,
   MemoryDiagram,
+  MemoryFrame,
   MemoryLocation,
-  MemoryStatement,
+  MemorySection,
   MemorySubDiagram,
   MemoryValue,
   NodeStyle,
   StyledLabel,
 } from "./types";
 
-import { Box, BoxProps, styled, SxProps, useTheme } from "@mui/material";
+import { Box, BoxProps, Stack, styled, SxProps, useTheme } from "@mui/material";
 import { monospace } from "@/app/theme";
 import { merge } from "lodash";
 
 import type LeaderLine from "leader-line-new";
 import { MDXClient } from "../mdx/client";
-import { mergeSx } from "merge-sx";
 
 export default function MemoryDiagramView({ content }: PreContent) {
   const diagram = React.useMemo<MemoryDiagram>(
@@ -51,27 +52,27 @@ export default function MemoryDiagramView({ content }: PreContent) {
 
 const borderColor = "var(--palette-memory)";
 
+function SubdiagramTextView({ text }: { text?: DiagramText }) {
+  if (!text) return null;
+  if (Object.values(text).filter((t) => t.label).length === 0) return null;
+  return (
+    <Stack mb={2} spacing={0.5}>
+      <MDXLabel label={text.title} />
+      <MDXLabel
+        label={text.subtitle}
+        sx={{ "& p": { fontSize: "0.875rem" } }}
+      />
+    </Stack>
+  );
+}
+
 function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
   const { diagramRef } = React.useContext(DiagramContext);
   const subdiagramRef = React.useRef<HTMLDivElement | null>(null);
   return (
     <DiagramContext.Provider value={{ diagramRef, subdiagramRef }}>
-      <Box
-        className="memory-step"
-        width={diagram.layout === "wide" ? 1 : undefined}
-      >
-        {(diagram.labels.title?.label || diagram.labels.subtitle?.label) && (
-          <Box mb={2}>
-            <MDXLabel
-              content={diagram.labels.title}
-              sx={{ marginBottom: 0.5 }}
-            />
-            <MDXLabel
-              content={diagram.labels.subtitle}
-              sx={{ "& p": { fontSize: "0.875rem" } }}
-            />
-          </Box>
-        )}
+      <Box className="memory-step" width={diagram.wide ? 1 : undefined}>
+        <SubdiagramTextView text={diagram.text} />
         <Box
           display="flex"
           gap="60px"
@@ -79,115 +80,75 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
           lineHeight={1.25}
           ref={subdiagramRef}
         >
-          {diagram.stack.length > 0 && (
-            <Section
-              label={diagram.labels.stack}
-              className="memory-section-stack"
-            >
-              {diagram.stack.map((frame, idx) => (
-                <Frame
-                  key={idx}
-                  label={frame.label}
-                  section="stack"
-                  statements={frame.statements}
-                />
-              ))}
-            </Section>
-          )}
-          {diagram.heap.length > 0 && (
-            <Section
-              label={diagram.labels.heap}
-              className="memory-section-heap"
-            >
-              <Frame statements={diagram.heap} section="heap" />
-            </Section>
-          )}
+          {diagram.sections.map((section, idx) => (
+            <Section key={idx} section={section} />
+          ))}
         </Box>
       </Box>
     </DiagramContext.Provider>
   );
 }
 
-function Section({
-  label,
-  ...rest
-}: BoxProps & {
-  label?: StyledLabel;
-}) {
-  const { children, ...boxProps } = rest;
+function Section({ section }: { section: MemorySection }) {
   return (
-    <Box
-      border={`1px dashed ${borderColor}`}
-      padding={1}
-      height="max-content"
-      {...boxProps}
-    >
-      {label?.label && (
-        <Box marginBottom={0.5} sx={{ "& p": { fontWeight: "bold" } }}>
-          <MDXLabel content={label} />
-        </Box>
-      )}
-      {children}
+    <Box border={`1px dashed ${borderColor}`} padding={1} height="max-content">
+      <MDXLabel
+        label={section.label}
+        sx={{ marginBottom: 0.5, "& p": { fontWeight: "bold" } }}
+      />
+      <Stack spacing={0.5}>
+        {section.frames.map((frame, idx) => (
+          <Frame key={idx} section={section} frame={frame} />
+        ))}
+      </Stack>
     </Box>
   );
 }
 
 function Frame({
-  label,
-  statements,
   section,
+  frame,
 }: {
-  label?: string;
-  statements: MemoryStatement[];
   section: MemorySection;
+  frame: MemoryFrame;
 }) {
   return (
     <ObjectValueView
-      value={{
-        kind: "object",
-        value: statements.map((s) => [s.variable, s.value] as const),
-        type: label,
-      }}
-      depth={0}
-      section={section}
-      path={[]}
-      labelMapping={Object.fromEntries(
-        statements.map((s) => [s.variable, s.label || s.variable])
-      )}
-      hideLabels={section === "heap"}
+      value={frame.value}
+      path={frame.name ? [frame.name] : []}
+      fields={section.fields}
     />
   );
 }
 
-type MemorySection = "stack" | "heap";
-
 type ValueProps<TKind> = {
   value: MemoryValue & { kind: TKind };
-  depth: number;
-  section: MemorySection;
   path: MemoryLocation;
+  arrayBorder?: boolean;
 };
 
-type DiagramScope = {
+type DiagramContextObject = {
   diagramRef: React.RefObject<HTMLElement | null>;
   subdiagramRef?: React.RefObject<HTMLElement | null>;
 };
 
-const DiagramContext = React.createContext<DiagramScope>(
+const DiagramContext = React.createContext<DiagramContextObject>(
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   null as any
 );
 
 function ValueView(props: ValueProps<string>) {
-  if (props.value.kind === "array")
-    return <ArrayValueView {...props} value={props.value} />;
-  if (props.value.kind === "literal")
-    return <LiteralValueView {...props} value={props.value} />;
-  if (props.value.kind === "object")
-    return <ObjectValueView {...props} value={props.value} />;
-  if (props.value.kind === "pointer")
-    return <PointerValueView {...props} value={props.value} />;
-  return null;
+  const { value } = props;
+  switch (value.kind) {
+    case "array":
+      return <ArrayValueView {...props} value={value} />;
+    case "literal":
+      return <LiteralValueView {...props} value={value} />;
+    case "object":
+      return <ObjectValueView {...props} value={value} fields={true} />;
+    case "pointer":
+      return <PointerValueView {...props} value={value} />;
+  }
 }
 
 const Tr = styled("tr")``;
@@ -198,11 +159,15 @@ function applyStyles(sx: SxProps, style?: NodeStyle) {
   return mergeNodeStyles({ sx }, style);
 }
 
-function ArrayValueView({ value, depth, section, path }: ValueProps<"array">) {
+function ArrayValueView({
+  value: { value, style },
+  arrayBorder,
+  path,
+}: ValueProps<"array">) {
   return (
     <Box
       component="table"
-      border={depth > 0 ? `1px solid ${borderColor}` : undefined}
+      border={arrayBorder ? `1px solid ${borderColor}` : undefined}
       {...applyStyles(
         {
           borderCollapse: "collapse",
@@ -215,17 +180,16 @@ function ArrayValueView({ value, depth, section, path }: ValueProps<"array">) {
             },
           },
         },
-        value.style?.value
+        style?.value
       )}
     >
       <tbody>
         <Tr data-ref={formatLocation(path)}>
-          {value.value.map((elem, idx) => (
+          {value.map((elem, idx) => (
             <Td key={idx} data-connector="bottom" {...elem.style?.node}>
               <ValueView
                 value={elem}
-                depth={depth + 1}
-                section={section}
+                arrayBorder={true}
                 path={[...path, idx]}
               />
             </Td>
@@ -237,26 +201,17 @@ function ArrayValueView({ value, depth, section, path }: ValueProps<"array">) {
 }
 
 function ObjectValueView({
-  value,
-  section,
+  value: { label, value, style },
   path,
-  labelMapping,
-  hideLabels,
-}: ValueProps<"object"> & {
-  labelMapping?: Record<string, string>;
-  hideLabels?: boolean;
-}) {
+  fields,
+}: ValueProps<"object"> & { fields?: boolean }) {
   return (
     <Box
       fontFamily={monospace.style.fontFamily}
       fontSize="0.875rem"
       whiteSpace="pre"
     >
-      {value.type && (
-        <span style={{ fontFamily: monospace.style.fontFamily }}>
-          {value.type}
-        </span>
-      )}
+      <MDXLabel label={{ label }} />
       <Box
         component="table"
         {...applyStyles(
@@ -268,26 +223,16 @@ function ObjectValueView({
               paddingY: "2px",
             },
           },
-          value.style?.value
+          style?.value
         )}
         data-ref={formatLocation(path)}
       >
         <tbody>
-          {value.value.map(([name, elem], idx) => (
+          {value.map(({ name, label, value: elem }, idx) => (
             <Tr key={idx} {...elem.style?.row}>
-              {!hideLabels && (
-                <Td {...elem.style?.name}>{labelMapping?.[name] || name}</Td>
-              )}
-              <Td
-                data-connector={section === "stack" ? "right" : "left"}
-                {...elem.style?.node}
-              >
-                <ValueView
-                  depth={0}
-                  value={elem}
-                  section={section}
-                  path={[...path, name]}
-                />
+              {fields && <Td {...elem.style?.name}>{label ?? name}</Td>}
+              <Td {...elem.style?.node}>
+                <ValueView value={elem} path={[...path, name]} />
               </Td>
             </Tr>
           ))}
@@ -369,13 +314,19 @@ function LiteralValueView({ value, path }: ValueProps<"literal">) {
   );
 }
 
-function MDXLabel({ content, sx }: { content?: StyledLabel; sx?: SxProps }) {
-  if (!content) return null;
-  const style: NodeStyle = {
-    ...content.style,
-    sx: mergeSx(sx, content?.style?.sx),
-  };
-  if (typeof content.label === "string")
-    return <Box {...style}>{content.label}</Box>;
-  return <MDXClient {...style} {...content.label} noMargin />;
+function MDXLabel({
+  label,
+  sx,
+  className,
+  ...boxProps
+}: BoxProps & { label?: StyledLabel }) {
+  if (!label || !label.label) return null;
+  const style = mergeNodeStyles({ sx, className }, label.style);
+  if (typeof label.label === "string")
+    return (
+      <Box {...boxProps} {...style}>
+        {label.label}
+      </Box>
+    );
+  return <MDXClient {...boxProps} {...style} {...label.label} noMargin />;
 }
