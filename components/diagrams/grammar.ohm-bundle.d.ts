@@ -40,10 +40,10 @@ export interface MemoryDiagramActionDict<T> extends BaseActionDict<T> {
   LabelDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
   LabelLocation?: (this: NonterminalNode, arg0: NonterminalNode | TerminalNode) => T;
   StyleDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode) => T;
-  LabelStyle?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
-  NodeStyles?: (this: NonterminalNode, arg0: IterationNode, arg1: IterationNode, arg2: NonterminalNode, arg3: NonterminalNode) => T;
-  LinkStyle?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: NonterminalNode) => T;
-  Styles?: (this: NonterminalNode, arg0: IterationNode) => T;
+  LabelStyle?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: IterationNode) => T;
+  NodeStyles?: (this: NonterminalNode, arg0: IterationNode, arg1: IterationNode, arg2: NonterminalNode, arg3: IterationNode) => T;
+  LinkStyle?: (this: NonterminalNode, arg0: TerminalNode, arg1: NonterminalNode, arg2: IterationNode) => T;
+  Style?: (this: NonterminalNode, arg0: NonterminalNode) => T;
   LayoutDirective?: (this: NonterminalNode, arg0: TerminalNode, arg1: TerminalNode) => T;
   MultiLocation?: (this: NonterminalNode, arg0: NonterminalNode, arg1: IterationNode) => T;
   LocationSlice?: (this: NonterminalNode, arg0: TerminalNode, arg1: IterationNode, arg2: TerminalNode, arg3: IterationNode, arg4: IterationNode, arg5: IterationNode, arg6: TerminalNode) => T;

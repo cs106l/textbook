@@ -24,7 +24,7 @@ MemoryDiagram {
 
   Value = Object | Array | Pointer | ArrayString | StringLiteral | literal
   
-  Object = identifier? "{" ListOf<ObjectField, ","> "}"
+  Object = (identifier | string)? "{" ListOf<ObjectField, ","> "}"
   ObjectField = identifier Label ":" Value
 
   Array = "[" ListOf<Value, ","> "]"
@@ -43,18 +43,18 @@ MemoryDiagram {
    */
   Directive = LabelDirective | StyleDirective | LayoutDirective
     
-  LabelDirective = "#label" (LabelLocation) string
+  LabelDirective = "#label" LabelLocation string
   LabelLocation = "stack" | "heap" | "title" | "subtitle" | heapSymbol
     
   StyleDirective = "#style" (LabelStyle | NodeStyles | LinkStyle)
-  LabelStyle = "label:" LabelLocation Styles
-  NodeStyles = (("value" | "name" | "row") ":")? MultiLocation Styles
-  LinkStyle = "link:" MultiLocation JsonObject
-  Styles = (cssClass | JsonObject)+
+  LabelStyle = ":label" Style LabelLocation+
+  NodeStyles = (":" ("value" | "name" | "row"))? Style MultiLocation+
+  LinkStyle = ":link" JsonObject MultiLocation+ 
+  Style = (cssClass | JsonObject)
 
   LayoutDirective = "#layout" "wide"
   
-  MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice)*
+  MultiLocation = identifier (LocationMemberAccess | LocationSubscript | LocationSlice | ".*")*
   LocationSlice = "[" int? ":" int? (":" int?)? "]"
   
   cssClass = (alnum | "_" | "-")+

@@ -96,7 +96,7 @@ function Section({ section }: { section: MemorySection }) {
         label={section.label}
         sx={{ marginBottom: 0.5, "& p": { fontWeight: "bold" } }}
       />
-      <Stack spacing={0.5}>
+      <Stack spacing={0.5} alignItems="center">
         {section.frames.map((frame, idx) => (
           <Frame key={idx} section={section} frame={frame} />
         ))}
@@ -225,11 +225,15 @@ function ObjectValueView({
           },
           style?.value
         )}
-        data-ref={formatLocation(path)}
+        data-ref={value.length === 0 ? formatLocation(path) : undefined}
       >
         <tbody>
           {value.map(({ name, label, value: elem }, idx) => (
-            <Tr key={idx} {...elem.style?.row}>
+            <Tr
+              key={idx}
+              {...elem.style?.row}
+              data-ref={idx === 0 ? formatLocation(path) : undefined}
+            >
               {fields && <Td {...elem.style?.name}>{label ?? name}</Td>}
               <Td {...elem.style?.node}>
                 <ValueView value={elem} path={[...path, name]} />
@@ -297,10 +301,15 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
       line.remove();
       diagram.removeEventListener("scroll", onScroll);
     };
-  }, [LL, theme, value, diagramRef, subdiagramRef]);
+  });
 
   return (
-    <Span data-ref={formatLocation(path)} ref={src} {...value.style?.value}>
+    <Span
+      data-ref={formatLocation(path)}
+      data-connector="right"
+      ref={src}
+      {...value.style?.value}
+    >
       {value.value !== null ? "●" : "⦻"}
     </Span>
   );

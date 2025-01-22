@@ -134,7 +134,7 @@ main:
 vec = Vector<int>{size: 4, capacity: 10, data: &data}
 data => b"1234______"
 
-#style data[:4] highlight { fontWeight: bold }
+#style highlight data[:4]
 ```
 
 As you can see, diagrams consist of a series of assignments (`vec = ...`) on the stack (which may occur inside of a frame like `main:`) along with heap allocations (`data => ...`). Diagram elements can be styled either with a CSS class or by embedding a raw CSS object. Here's a more complicated example that uses subdiagrams (note how each subdiagram now has a title like `L2`, `L3`):
@@ -164,9 +164,9 @@ L1 {
   cin("std::cin") = &data[6]  
   data => b"Bjarne Stroustrup"
 
-  #style data[:6] highlight
-  #style link:cin { dash: { animation: true } }
-  #style name:cin { color: "red" }
+  #style highlight data[:6]
+  #style:link { dash: { animation: true } } cin
+  #style:name { color: "red" } cin
 }
 
 L2 {
@@ -176,36 +176,52 @@ L2 {
   foo = &data
   data => [1,2,3]
 
-  #style label:subtitle { color: red }
+  #style:label { color: red } subtitle
 }
 
 L3 {
   x = 1
   foo:
-  y = 2 
+  y = 2    
 }
 ```
 
 Note how in the above, placing a diagram immediately below a code block causes the two to appear merged together.
+
+### Multiple heap sections
+
+Use `=>` with any number of equal signs to refer to a different section of the heap. This is useful when representing a complicated memory layout, for example an array of arrays (for example when representing an `std::deque`):
+
+```memory
+d = deque<int> { blocks: &blocks }
+blocks => { 0: &0, 1: &1, 2: &2 }
+0 ==> b"__23"
+1 ==> b"4567"
+2 ==> b"89__"
+
+#style:link { path: straight } blocks.*
+#label ==> "...A heap far far away"
+```
 
 ### Styling
 
 To style the diagram, you can use a `#style` directive. The syntax is:
 
 ```c
-#style [loc] [cssClassOrObject ...]         // Styles a node's surrounding container
-#style name:[loc] [cssClassOrObject ...]    // For fields/variables, styles the name of the node
-#style row:[loc] [cssClassOrObject ...]     // For fields/variables, styles the entire name/value row
-#style value:[loc] [cssClassOrObject ...]   // Styles the innermost contents of a node
-#style link:[loc] [lineOptions]             // Styles the arrow for a pointer
+#style        [cssClassOrObject] [loc ...]       // Styles a node's surrounding container
+#style:name   [cssClassOrObject] [loc ...]       // For fields/variables, styles the name of the node
+#style:row    [cssClassOrObject] [loc ...]       // For fields/variables, styles the entire name/value row
+#style:value  [cssClassOrObject] [loc ...]       // Styles the innermost contents of a node
+#style:link   [lineOptions]      [loc ...]       // Styles the arrow for a pointer
+#style:label  [cssClassOrObject] [labelLoc ...]  // Styles a diagram label
 ```
 
-`cssClassOrObject` is either a CSS classname or a JSON-esque object containing CSS properties. `lineOptions` are the [LeaderLine options](https://github.com/II-alex-II/leader-line-new?tab=readme-ov-file#options) for the arrow connecting a pointer to its pointee.
+`[cssClassOrObject]` is either a CSS classname or a JSON-esque object containing CSS properties. `[lineOptions]` are the [LeaderLine options](https://github.com/II-alex-II/leader-line-new?tab=readme-ov-file#options) for the arrow connecting a pointer to its pointee. `[labelLoc]` is the location of a label, e.g. `stack`, `heap`, `title`, `subtitle`, `=>`, `==>`, etc.
 
 Note that you can use Python style array slicing, e.g.
 
 ```c
-#style data[2:10:2] highlight
+#style highlight data[2:10:2]
 ```
 
 would highlight elements `[2, 10)`, skipping every other element. Negative indexes are allowed to refer to locations relative to the end of the array, e.g. `data[-1]`.
@@ -222,13 +238,9 @@ Use the label directive to custom diagram labels. All of the labels support mult
 #label title "**A title**"    // The title of the diagram
 #label subtitle "A subtitle"  // The subtitle of the diagram
 #label stack "Stack"          // The label of the stack section
-#label heap "Heap"            // The label of the heap section
+#label heap "Heap"            // The label of all the heap sections
+#label => "Heap"              // The label of a specific heap section
+                              // Also works for ==>, ===>, etc.
 ```
 
 Use an empty string to hide that label.
-
-You can style a label using the `#style label` directive, which works similarly to [styling a node](#styling)
-
-```c
-#style label:subtitle [cssClassOrObject ...] 
-```

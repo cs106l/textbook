@@ -9,6 +9,7 @@ import {
   MemoryFrame,
   ObjectField,
   MemorySection,
+  DiagramText,
 } from "./types";
 
 import { mergeSx } from "merge-sx";
@@ -33,8 +34,7 @@ export default async function compileDiagram(
   };
 
   for (const subdiagram of diagram) {
-    if (!subdiagram.text) continue;
-    for (const label of Object.values(subdiagram.text))
+    for (const label of Object.values(subdiagram.text ?? {}))
       await compileLabel(label);
     for (const section of subdiagram.sections)
       await compileLabel(section.label);
@@ -68,13 +68,19 @@ function processDirective(
 
   if (directive.kind === "style") {
     if (directive.type === "node") {
-      const values = locateValues(diagram, directive.location, source);
-      values.forEach((v) => (v.style = mergeStyles(v.style, directive.style)));
+      for (const location of directive.location) {
+        const values = locateValues(diagram, location, source);
+        values.forEach(
+          (v) => (v.style = mergeStyles(v.style, directive.style))
+        );
+      }
     } else {
-      const labels = locateLabels(diagram, directive.location, sectionLabels);
-      labels.forEach(
-        (l) => (l.style = mergeNodeStyles(l.style, directive.style))
-      );
+      for (const location of directive.location) {
+        const labels = locateLabels(diagram, location, sectionLabels);
+        labels.forEach(
+          (l) => (l.style = mergeNodeStyles(l.style, directive.style))
+        );
+      }
     }
   }
 
@@ -93,22 +99,26 @@ function locateLabels(
   labelLocation: string,
   sectionLabels: SectionLabelsMap
 ): StyledLabel[] {
-  return ((): (StyledLabel | undefined)[] => {
-    if (labelLocation === "title") return [diagram.text?.title];
-    if (labelLocation === "subtitle") return [diagram.text?.subtitle];
-    // "stack" refers to any section that has fields
-    if (labelLocation === "stack")
-      return diagram.sections.filter((s) => s.fields).map((s) => s.label);
-    // "heap" refers to any section that has no fields
-    if (labelLocation === "heap")
-      return diagram.sections.filter((s) => !s.fields).map((s) => s.label);
+  if (["title", "subtitle"].includes(labelLocation)) {
+    diagram.text ??= {};
+    return [(diagram.text[labelLocation as keyof DiagramText] ??= {})];
+  }
+  // "stack" refers to any section that has fields
+  if (labelLocation === "stack")
+    return diagram.sections
+      .filter((s) => s.fields)
+      .map((s) => (s.label ??= {}));
+  // "heap" refers to any section that has no fields
+  if (labelLocation === "heap")
+    return diagram.sections
+      .filter((s) => !s.fields)
+      .map((s) => (s.label ??= {}));
 
-    // =>, ==>, etc. refer to the labels of their corresponding sections
-    const idx = sectionLabels.get(labelLocation);
-    if (!idx) return [];
-    if (idx < 0 || idx >= diagram.sections.length) return [];
-    return [diagram.sections[idx].label];
-  })().filter((sl) => sl !== undefined);
+  // =>, ==>, etc. refer to the labels of their corresponding sections
+  const idx = sectionLabels.get(labelLocation);
+  if (!idx) return [];
+  if (idx < 0 || idx >= diagram.sections.length) return [];
+  return [(diagram.sections[idx].label ??= {})];
 }
 
 export function mergeNodeStyles(
@@ -213,6 +223,26 @@ function locateValuesRec(
 
   const segment = loc[idx];
 
+  /* Universal member access */
+  if (segment === "*") {
+    if (parent.kind !== "object")
+      return fail(`cannot take universal access (*) of non-object value {}`);
+
+    for (const { name, value } of parent.value) {
+      locateValuesRec(
+        globals,
+        loc,
+        idx + 1,
+        values,
+        source,
+        [...parentPath, name],
+        value
+      );
+    }
+
+    return;
+  }
+
   /* Member access */
   if (typeof segment === "string") {
     if (parent.kind !== "object")
@@ -293,6 +323,7 @@ function locateValuesRec(
 }
 
 export function formatLocation(loc: MemoryLocationSliced): string {
+  if (loc.length === 0) return "";
   return (
     loc[0] +
     loc
@@ -344,13 +375,13 @@ type StyleDirective = NodeStyleDirective | LabelStyleDirective;
 type NodeStyleDirective = {
   kind: "style";
   type: "node";
-  location: MemoryLocationSliced;
+  location: MemoryLocationSliced[];
   style: ValueStyle;
 };
 type LabelStyleDirective = {
   kind: "style";
   type: "label";
-  location: string;
+  location: string[];
   style: NodeStyle;
 };
 type LayoutDirective = {
@@ -681,7 +712,7 @@ semantics.addOperation<MemoryValue>("toValue()", {
       return { kind: "pointer", value: null };
     return {
       kind: "literal",
-      value: contents.sourceString,
+      value: contents.sourceString.trim(),
     };
   },
 });
@@ -792,6 +823,10 @@ semantics.addOperation<MemoryLocationSliced>("toLocationSliced()", {
     if (stride === 0) throw new Error("slice step cannot be zero");
     return [{ start, end, stride }];
   },
+
+  _terminal() {
+    return ["*"];
+  },
 });
 
 semantics.addOperation<Directive>("toDirective()", {
@@ -802,7 +837,7 @@ semantics.addOperation<Directive>("toDirective()", {
   LabelDirective(_, section, label) {
     return {
       kind: "label",
-      section: section.sourceString as "stack" | "heap",
+      section: section.sourceString,
       label: label.asString(),
     };
   },
@@ -815,34 +850,34 @@ semantics.addOperation<Directive>("toDirective()", {
     return { kind: "layout", layout: "wide" };
   },
 
-  LabelStyle(_, location, style) {
+  LabelStyle(_, style, locations) {
     return {
       kind: "style",
       type: "label",
-      location: location.sourceString,
+      location: locations.children.map((n) => n.sourceString),
       style: style.toNodeStyle(),
     };
   },
 
-  NodeStyles(kindNode, _, location, styles) {
+  NodeStyles(_, kindNode, style, locations) {
     const kind = ((kindNode.numChildren > 0 &&
       kindNode.child(0).sourceString) ||
       "node") as keyof ValueStyle;
     return {
       kind: "style",
       type: "node",
-      location: location.toLocationSliced(),
+      location: locations.children.map((n) => n.toLocationSliced()),
       style: {
-        [kind]: styles.toNodeStyle(),
+        [kind]: style.toNodeStyle(),
       },
     };
   },
 
-  LinkStyle(_, location, style) {
+  LinkStyle(_, style, locations) {
     return {
       kind: "style",
       type: "node",
-      location: location.toLocationSliced(),
+      location: locations.children.map((n) => n.toLocationSliced()),
       style: {
         link: style.toJSON(),
       },
@@ -851,10 +886,8 @@ semantics.addOperation<Directive>("toDirective()", {
 });
 
 semantics.addOperation<NodeStyle>("toNodeStyle()", {
-  Styles(styles) {
-    return styles.children
-      .map((n) => n.toNodeStyle())
-      .reduce(mergeNodeStyles, undefined);
+  Style(node) {
+    return node.toNodeStyle();
   },
 
   JsonObject(_, __, ___) {

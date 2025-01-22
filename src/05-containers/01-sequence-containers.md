@@ -47,7 +47,7 @@ L2 {
   #label subtitle "`v` has enough remaining capacity to insert `5`, so it gets inserted into `data` at the end of the vector"
   v = vector<int>{ size: 5, capacity: 5, data: &data }
   data => b"12345"
-  #style data[4] highlight
+  #style highlight data[4]
 }
 
 L3 {
@@ -55,7 +55,7 @@ L3 {
   v = vector<int>{ size: 6, capacity: 10, data: &data }
   old => b"12345"
   data => b"123456____"
-  #style old { opacity: 0.5 }
-  #style data[5] highlight
+  #style { opacity: 0.5 } old
+  #style highlight data[5]
 }
 ```
