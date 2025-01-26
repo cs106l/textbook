@@ -4,7 +4,13 @@ import SearchClient from "./client";
 import path from "path";
 import fs from "fs";
 import { TOCNode } from "../toc/compile";
-import { newDoc, SearchIndex, SearchResult, SerializedIndex } from "./common";
+import {
+  newDoc,
+  SearchIndex,
+  SearchResult,
+  SearchResultType,
+  SerializedIndex,
+} from "./common";
 
 export default async function Search() {
   /**
@@ -29,7 +35,6 @@ async function buildIndex(book: Book): Promise<SearchIndex> {
   const doc = newDoc();
   const counter: Counter = { index: 0 };
   book.forEach((node) => processBookNode(node, doc, counter));
-
   return doc;
 }
 
@@ -37,6 +42,13 @@ type Counter = { index: number };
 
 function processBookNode(node: BookNode, doc: SearchIndex, nextId: Counter) {
   if (node.meta.hidden) return;
+  doc.add({
+    id: nextId.index++,
+    content: `${node.meta.nav_title} ${node.meta.title}`,
+    type: SearchResultType.Page,
+    path: node.meta.path,
+    title: node.meta.nav_title,
+  });
   processTocNode(node, node.toc, doc, nextId);
   node.children.forEach((child) => processBookNode(child, doc, nextId));
 }
@@ -51,7 +63,7 @@ function processTocNode(
     doc.add({
       id: nextId.index++,
       content: toc.title,
-      heading: true,
+      type: SearchResultType.Heading,
       path: node.meta.path,
       slug: toc.id,
       title: node.meta.nav_title,
@@ -59,7 +71,7 @@ function processTocNode(
     doc.add({
       id: nextId.index++,
       content: toc.content,
-      heading: false,
+      type: SearchResultType.Body,
       path: node.meta.path,
       slug: toc.id,
       title: node.meta.nav_title,
@@ -76,8 +88,7 @@ function getDefaultSuggestions(book: Book): SearchResult[] {
     suggestions.push({
       id: index,
       content: node.meta.nav_title,
-      heading: true,
-      slug: "",
+      type: SearchResultType.Page,
       title: node.meta.nav_title,
       path: node.meta.path,
     });

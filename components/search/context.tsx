@@ -45,6 +45,8 @@ export function buildContextHighlight(
   query: string,
   contextWindow: number
 ): React.ReactNode {
+  if (!content) return "";
+  if (!query) return content;
   const ranges = getRanges(content, query);
   if (ranges.length === 0) return content;
   const largest = getLargest(ranges);

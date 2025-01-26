@@ -184,6 +184,8 @@ L4 {
 }
 ```
 
+An astute reader may wonder: if an `std::deque<T>` must double its `blocks` array (as shown at `L3` above) when it runs out of space, how is this more performant than an `std::vector<T>`? In practice, the size of each block in a deque will range from several hundred to several thousand elements, depending on the type `T`. This effectively means that resizing the `blocks` array is hundreds to thousands of times faster than resizing the `data` array in a vector.
+
 Despite splitting elements up across multiple allocations, `std::deque<T>` still supports getting elements by index, just like an `std::vector<T>`. In this example, to get `d[i]`, one could look at the block in `blocks` at index `(start + i) / 4` (using integer division), and then index `(start + i) % 4` within that block. In actual practice, `start` and `finish` effectively store pointers directly to the first and last elements in the deque and so the implementation details may differ, but the same principles apply.
 
 As a result, indexing into an `std::deque<T>` is slightly slower than an `std::vector<T>`, since it must follow two pointers (as opposed to one) to find an element. While a deque is more powerful than a vector in the sense that it supports all the operations of a vector and more, **a vector should still be preferred over a deque** unless your use-case requires efficient front insertion/removal.

@@ -1,11 +1,17 @@
 import FlexSearch from "flexsearch";
 
+export enum SearchResultType {
+  Page,
+  Heading,
+  Body,
+}
+
 export type SearchResult = {
   id: number;
   content: string;
-  heading: boolean; // Is this search result a heading?
+  type: SearchResultType;
   path: string; // The link to the page
-  slug: string; // The slug of the containing section
+  slug?: string; // The slug of the containing section
   title: string; // The title of the containing page
 };
 

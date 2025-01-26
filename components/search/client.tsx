@@ -22,7 +22,12 @@ import {
 import { SimpleTreeView } from "@mui/x-tree-view";
 import React from "react";
 import TreeItem, { TreeItemClasses } from "../tree-item";
-import { newDoc, SearchResult, type SearchIndex } from "./common";
+import {
+  newDoc,
+  SearchResult,
+  SearchResultType,
+  type SearchIndex,
+} from "./common";
 import { buildContextHighlight } from "./context";
 
 export type SearchClientProps = {
@@ -204,21 +209,20 @@ type ClusteredResults = {
   results: SearchResult[];
 };
 
-function clusterResults(
-  results: SearchResult[],
-  empty?: boolean
-): ClusteredResults[] {
+function clusterResults(results: SearchResult[]): ClusteredResults[] {
   const clusters = new Map<string, ClusteredResults>();
   for (const result of results) {
-    const cluster = clusters.get(result.path);
-    if (cluster && !empty) cluster.results.push(result);
+    let cluster = clusters.get(result.path);
     if (!cluster) {
-      clusters.set(result.path, {
+      cluster = {
         title: result.title,
         path: result.path,
-        results: empty ? [] : [result],
-      });
+        results: [],
+      };
+      clusters.set(result.path, cluster);
     }
+
+    if (result.type !== SearchResultType.Page) cluster.results.push(result);
   }
   return [...clusters.values()];
 }
@@ -236,10 +240,7 @@ function SearchResults({
 }: SearchResultsProps) {
   const [results, setResults] =
     React.useState<SearchResult[]>(defaultSuggestions);
-  const clusters = React.useMemo(
-    () => clusterResults(results, index === null || query.length === 0),
-    [index, results, query]
-  );
+  const clusters = React.useMemo(() => clusterResults(results), [results]);
 
   /** Run search when query changes */
   React.useEffect(() => {
@@ -300,7 +301,7 @@ function SearchResults({
           key={cluster.path}
           itemId={cluster.path}
           label={
-            <IconLabel icon={<DocumentTextIcon />}>{cluster.title}</IconLabel>
+            <IconLabel type={SearchResultType.Page}>{cluster.title}</IconLabel>
           }
           href={cluster.path}
           ref={index === 0 ? firstItemRef : undefined}
@@ -310,15 +311,11 @@ function SearchResults({
               key={result.id}
               itemId={`${result.id}`}
               label={
-                <IconLabel
-                  icon={
-                    result.heading ? <HashtagIcon /> : <Bars3BottomLeftIcon />
-                  }
-                >
+                <IconLabel type={result.type}>
                   {buildContextHighlight(result.content, query, 20)}
                 </IconLabel>
               }
-              href={`${result.path}#${result.slug}`}
+              href={`${result.path}#${result.slug ?? ""}`}
             />
           ))}
         </TreeItem>
@@ -345,15 +342,27 @@ function SearchResults({
 }
 
 function IconLabel({
-  icon,
+  type,
   children,
 }: {
-  icon: React.ReactNode;
+  type: SearchResultType;
   children: React.ReactNode;
 }) {
+  const Icon = React.useMemo(() => {
+    switch (type) {
+      case SearchResultType.Page:
+        return DocumentTextIcon;
+      case SearchResultType.Heading:
+        return HashtagIcon;
+      case SearchResultType.Body:
+        return Bars3BottomLeftIcon;
+    }
+  }, [type]);
   return (
     <Stack direction="row" spacing={1} alignItems="center">
-      <SvgIcon sx={{ fontSize: "1.25em" }}>{icon}</SvgIcon>
+      <SvgIcon sx={{ fontSize: "1.25em" }}>
+        <Icon />
+      </SvgIcon>
       <Typography whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
         {children}
       </Typography>
