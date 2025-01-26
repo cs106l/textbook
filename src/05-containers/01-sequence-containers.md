@@ -120,3 +120,70 @@ Now, the code not only compiles, but is lightning fast!
 
 ### Behind the scenes
 
+The issue with `std::vector<T>` was its use of a single allocation: all of the elements must move after the point of insertion. `std::deque<T>` solves this by splitting up the allocation into multiple fixed-size allocations. To keep track of where the in-use region begins and ends, `std::dequeu<T>` uses a `begin` and `finish` index (in reality, these are <abbr title="An abstraction enabling traversal of container elements sequentially without exposing the underlying data structure">iterators</abbr>, which are discussed in a later chapter, not indexes as shown below). Consider the following example:
+
+```cpp
+std::deque<int> d { 4, 5, 6, 7, 8, 9 }; `[]`
+d.push_front(3); `[]`
+d.push_front(2); `[]`
+d.push_front(1);
+d.push_front(0);
+d.push_front(-1);
+d.push_front(-2); `[]`
+```
+
+```memory
+L1 {
+  #label subtitle "Let's suppose this was the memory layout for the initial elements. Two fixed size blocks of size `4` have been allocated (the actual size and number of blocks allocated will depend on the compiler). Notice that `start` and `finish` refer to indexes across *all* blocks. `blocks` is an array of arrays, and `capacity` refers to the size of that array."
+
+  d = "deque<int>" { start: 1, finish: 6, blocks: &blocks, capacity: 2 }
+  blocks => "blocks" [ 0: &b0, 1: &b1 ]
+  b0 ==> b"_456"
+  b1 ==> b"789_"
+}
+
+L2 {
+  #label subtitle "When we invoke `d.push_front(3)`, the deque first checks if there is space available at the front of the first in-use chunk of the deque. In this case there is, so the element gets placed there. Notice that `start` has been updated to `0` to reflect this."
+
+  d = "deque<int>" { start: 0, finish: 6, blocks: &blocks, capacity: 2 }
+  blocks => "blocks" [ 0: &b0, 1: &b1 ]
+  b0 ==> b"3456"
+  b1 ==> b"789_"
+
+  #style highlight b0[0]
+}
+
+L3 {
+  #label subtitle "The first in-use block has run out of space, so we must allocate a new one. However, we must keep track of pointer to the newly allocated block in `blocks`, which has also run out of space. Similarly to how a `std::vector` doubles its element array on resizing, `deque` will do a similar thing with the `blocks` array. Once `blocks` has been resized (copying over the old pointers and then deallocating the old `blocks` array), a new block is allocated to store `2`.
+  
+  Notice that `start` and `finish` in this example are relative to the beginning of the `blocks` array **as if** it were completely filled. Blocks are allocated on demand, so the first block in this example is unallocated and stored as `nullptr` in the `blocks` array."
+
+  d = "deque<int>" { start: 7, finish: 14, blocks: &blocks, capacity: 4 }
+  old => "blocks" [ 0: &b2, 1: &b3 ]
+  blocks => "blocks" [ 0: null, 1: &b1, 2: &b2, 3: &b3 ]
+  b1 ==> b"___2"
+  b2 ==> b"3456"
+  b3 ==> b"789_"
+
+  #style highlight b1[3]
+  #style { opacity: 0.5 } old
+  #style:link { opacity: 0.25 } old.*
+}
+
+L4 {
+  #label subtitle "The first in-use block runs out of space after pushing `1`, `0`, and `-1`, so in order to execute `d.push_front(-3)`, a new block is allocated on demand to store `-3` and added to the `blocks` array."
+
+  d = "deque<int>" { start: 3, finish: 14, blocks: &blocks, capacity: 4 }
+  blocks => "blocks" [ 0: &b0, 1: &b1, 2: &b2, 3: &b3 ]
+  b0 ==> [_, _, _, -3]
+  b1 ==> [-1, 0, 1, 2]
+  b2 ==> b"3456"
+  b3 ==> b"789_"
+
+  #style highlight b0[3]
+}
+```
+
+Despite splitting elements up across multiple allocations, `std::deque<T>` still supports getting elements by index, just like an `std::vector<T>`. In this example, to get `d[i]`, one could look at the block in `blocks` at index `(start + i) / 4` (using integer division), and then index `(start + i) % 4` within that block. In actual practice, `start` and `finish` effectively store pointers directly to the first and last elements in the deque and so the implementation details may differ, but the same principles apply.
+
+As a result, indexing into an `std::deque<T>` is slightly slower than an `std::vector<T>`, since it must follow two pointers (as opposed to one) to find an element. While a deque is more powerful than a vector in the sense that it supports all the operations of a vector and more, **a vector should still be preferred over a deque** unless your use-case requires efficient front insertion/removal.

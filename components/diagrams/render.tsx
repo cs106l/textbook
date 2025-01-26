@@ -15,7 +15,15 @@ import {
   StyledLabel,
 } from "./types";
 
-import { Box, BoxProps, Stack, styled, SxProps, useTheme } from "@mui/material";
+import {
+  alpha,
+  Box,
+  BoxProps,
+  Stack,
+  styled,
+  SxProps,
+  useTheme,
+} from "@mui/material";
 import { monospace } from "@/app/theme";
 import { merge } from "lodash";
 
@@ -205,6 +213,7 @@ function ObjectValueView({
       fontFamily={monospace.style.fontFamily}
       fontSize="0.875rem"
       whiteSpace="pre"
+      {...style?.node}
     >
       <MDXLabel label={{ label }} />
       <Box
@@ -218,11 +227,11 @@ function ObjectValueView({
               paddingY: "2px",
             },
           },
-          style?.node
+          style?.value
         )}
         data-ref={value.length === 0 ? formatLocation(path) : undefined}
       >
-        <TBody {...style?.value}>
+        <TBody>
           {value.map(({ name, label, value: elem }, idx) => (
             <Tr
               key={idx}
@@ -273,16 +282,19 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
     );
     if (!src.current || !dst) return;
 
+    const { opacity = 1, color, ...lineOptions } = value.style?.link ?? {};
+    const lineColor = alpha(color ?? theme.palette.text.primary, opacity);
+
     const options: LeaderLine.Options = merge(
       {
-        color: theme.palette.text.primary,
+        color: lineColor,
         size: 1,
         endPlugSize: 2,
         startSocket: getSocket(src.current),
         endSocket: getSocket(dst),
         dash: value.style?.link?.dash ? { len: 8, gap: 4 } : undefined,
       } as LeaderLine.Options,
-      value.style?.link
+      lineOptions
     );
 
     const line = new LL(src.current, dst, options);
@@ -307,7 +319,7 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
       ref={src}
       {...value.style?.value}
     >
-      {value.value !== null ? "●" : "⦾"}
+      {value.value !== null ? "●" : "⦻"}
     </Span>
   );
 }

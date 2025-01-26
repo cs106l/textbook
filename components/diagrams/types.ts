@@ -65,12 +65,14 @@ export type PointerValue = {
 
 export type MemoryLocation = (string | number)[];
 
+export type LineStyle = LeaderLine.Options & { opacity?: number };
+
 export type ValueStyle = {
   node?: NodeStyle;
   value?: NodeStyle;
   name?: NodeStyle;
   row?: NodeStyle;
-  link?: LeaderLine.Options;
+  link?: LineStyle;
 };
 
 export type NodeStyle = {
