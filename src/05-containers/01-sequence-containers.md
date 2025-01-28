@@ -120,7 +120,7 @@ Now, the code not only compiles, but is lightning fast!
 
 ### Behind the scenes
 
-The issue with `std::vector<T>` was its use of a single allocation: all of the elements must move after the point of insertion. `std::deque<T>` solves this by splitting up the allocation into multiple fixed-size allocations. To keep track of where the in-use region begins and ends, `std::dequeu<T>` uses a `begin` and `finish` index (in reality, these are <abbr title="An abstraction enabling traversal of container elements sequentially without exposing the underlying data structure">iterators</abbr>, which are discussed in a later chapter, not indexes as shown below). Consider the following example:
+The issue with `std::vector<T>` was its use of a single allocation: all of the elements must move after the point of insertion. `std::deque<T>` solves this by splitting up the allocation into multiple fixed-size allocations. To keep track of where the in-use region begins and ends, `std::deque<T>` uses a `start` and `finish` index (in reality, these are <abbr title="An abstraction enabling traversal of container elements sequentially without exposing the underlying data structure">iterators</abbr>, which are discussed in a later chapter, not indexes as shown below). Consider the following example:
 
 ```cpp
 std::deque<int> d { 4, 5, 6, 7, 8, 9 }; `[]`
