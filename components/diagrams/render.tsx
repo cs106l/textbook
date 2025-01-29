@@ -42,9 +42,9 @@ export default function MemoryDiagramView({ content }: PreContent) {
   function positionArrowContainer() {
     if (!diagramRef.current) return;
     if (!arrowContainerRef.current) return;
-    let box = diagramRef.current.getBoundingClientRect();
-    let x = box.left + window.scrollX - diagramRef.current.scrollLeft;
-    let y = box.top + window.scrollY - diagramRef.current.scrollTop;
+    const box = diagramRef.current.getBoundingClientRect();
+    const x = box.left + window.scrollX - diagramRef.current.scrollLeft;
+    const y = box.top + window.scrollY - diagramRef.current.scrollTop;
     arrowContainerRef.current.style.transform = `translate(-${x}px, -${y}px)`;
   }
 
@@ -339,14 +339,14 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
       lineOptions
     );
 
-    const line = new LL(src.current, dst, options);
+    new LL(src.current, dst, options);
 
     // Code modified from: https://github.com/cognitive-engineering-lab/aquascope/blob/main/frontend/packages/aquascope-editor/src/editor-utils/interpreter.tsx#L606
     // Make arrows local to the diagram rather than global in the body
     // See: https://github.com/anseki/leader-line/issues/54
-    let svgSelectors = [".leader-line"];
-    let svgElements = svgSelectors.map((sel) => {
-      let el = document.body.querySelector(`:scope > ${sel}`);
+    const svgSelectors = [".leader-line"];
+    const svgElements = svgSelectors.map((sel) => {
+      const el = document.body.querySelector(`:scope > ${sel}`);
       if (!el) throw new Error(`Missing LineLeader element: ${sel}`);
       return el;
     });
