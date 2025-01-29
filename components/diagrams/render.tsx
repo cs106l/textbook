@@ -39,14 +39,14 @@ export default function MemoryDiagramView({ content }: PreContent) {
   const diagramRef = React.useRef<HTMLDivElement | null>(null);
   const arrowContainerRef = React.useRef<HTMLDivElement | null>(null);
 
-  function positionArrowContainer() {
+  const positionArrowContainer = React.useCallback(() => {
     if (!diagramRef.current) return;
     if (!arrowContainerRef.current) return;
     const box = diagramRef.current.getBoundingClientRect();
     const x = box.left + window.scrollX - diagramRef.current.scrollLeft;
     const y = box.top + window.scrollY - diagramRef.current.scrollTop;
-    arrowContainerRef.current.style.transform = `translate(-${x}px, -${y}px)`;
-  }
+    arrowContainerRef.current.style.transform = `translate(${-x}px, ${-y}px)`;
+  }, [diagramRef, arrowContainerRef]);
 
   /** Reposition arrow container on child change or re-render */
   React.useEffect(positionArrowContainer);
@@ -59,7 +59,7 @@ export default function MemoryDiagramView({ content }: PreContent) {
 
     observer.observe(arrowContainerRef.current, { childList: true });
     return () => observer.disconnect();
-  }, []);
+  }, [positionArrowContainer]);
 
   return (
     <DiagramContext.Provider value={{ diagramRef, arrowContainerRef }}>
