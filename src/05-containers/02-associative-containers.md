@@ -118,7 +118,7 @@ A `map` is the standard way to associate a key with a value in C++. It works exa
 
 You may be wondering: why do `std::map<K, V>` and `std::set<T>` impose the requirement that `K` and `T` have a `operator<`? The reason has to do with how these data structures are implemented behind the scenes. The ability to compare two elements allows us to build an efficient data structure that can quickly determine whether a key or value exists in a `map` or `set`.
 
-The C++ standard does not enforce any particular implementation for the `map` and `set`, but compilers will almost always implement these data structures with a [red-black tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree). In other words, `map` and `set` organize their elements as a tree of elements that allows efficient traversal. Let's see how this works for a `map` (`set` will function similarly). Consider the following code snippet:
+The C++ standard does not enforce any particular implementation for the `map` and `set`, but compilers almost always implement these data structures with a [red-black tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree). In other words, `map` and `set` organize their elements as a tree of elements that allows efficient traversal. Let's see how this works for a `map` (`set` will behave similarly). Consider the following code snippet:
 
 ```cpp
 std::map<std::string, size_t> m {

@@ -35,9 +35,34 @@ export default function MemoryDiagramView({ content }: PreContent) {
     () => JSON.parse(content),
     [content]
   );
+
   const diagramRef = React.useRef<HTMLDivElement | null>(null);
+  const arrowContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  function positionArrowContainer() {
+    if (!diagramRef.current) return;
+    if (!arrowContainerRef.current) return;
+    let box = diagramRef.current.getBoundingClientRect();
+    let x = box.left + window.scrollX - diagramRef.current.scrollLeft;
+    let y = box.top + window.scrollY - diagramRef.current.scrollTop;
+    arrowContainerRef.current.style.transform = `translate(-${x}px, -${y}px)`;
+  }
+
+  /** Reposition arrow container on child change or re-render */
+  React.useEffect(positionArrowContainer);
+  React.useEffect(() => {
+    if (!arrowContainerRef.current) return;
+    const observer = new MutationObserver((list) => {
+      const childChanged = list.some((l) => l.type === "childList");
+      if (childChanged) positionArrowContainer();
+    });
+
+    observer.observe(arrowContainerRef.current, { childList: true });
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <DiagramContext.Provider value={{ diagramRef }}>
+    <DiagramContext.Provider value={{ diagramRef, arrowContainerRef }}>
       <Box
         marginBottom={2}
         padding={2}
@@ -53,6 +78,15 @@ export default function MemoryDiagramView({ content }: PreContent) {
         {diagram.map((subdiagram, idx) => (
           <SubdiagramView key={idx} diagram={subdiagram} />
         ))}
+        <Box
+          className="memory-arrow-container"
+          ref={arrowContainerRef}
+          position="absolute"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+        />
       </Box>
     </DiagramContext.Provider>
   );
@@ -75,10 +109,10 @@ function SubdiagramTextView({ text }: { text?: DiagramText }) {
 }
 
 function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
-  const { diagramRef } = React.useContext(DiagramContext);
+  const context = React.useContext(DiagramContext);
   const subdiagramRef = React.useRef<HTMLDivElement | null>(null);
   return (
-    <DiagramContext.Provider value={{ diagramRef, subdiagramRef }}>
+    <DiagramContext.Provider value={{ ...context, subdiagramRef }}>
       <Box className="memory-step" width={diagram.wide ? 1 : undefined}>
         <SubdiagramTextView text={diagram.text} />
         <Box
@@ -132,6 +166,7 @@ type ValueProps<TKind> = {
 
 type DiagramContextObject = {
   diagramRef: React.RefObject<HTMLElement | null>;
+  arrowContainerRef: React.RefObject<HTMLElement | null>;
   subdiagramRef?: React.RefObject<HTMLElement | null>;
 };
 
@@ -260,7 +295,8 @@ function getSocket(el: Element | null) {
 }
 
 function PointerValueView({ value, path }: ValueProps<"pointer">) {
-  const { diagramRef, subdiagramRef } = React.useContext(DiagramContext);
+  const { diagramRef, arrowContainerRef, subdiagramRef } =
+    React.useContext(DiagramContext);
   const src = React.useRef<HTMLElement | null>(null);
   const theme = useTheme();
 
@@ -275,7 +311,13 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
   }, []);
 
   React.useEffect(() => {
-    if (!LL || !value.value || !diagramRef.current || !subdiagramRef?.current)
+    if (
+      !LL ||
+      !value.value ||
+      !diagramRef.current ||
+      !arrowContainerRef.current ||
+      !subdiagramRef?.current
+    )
       return;
     const dst = subdiagramRef.current.querySelector(
       `[data-ref="${formatLocation(value.value)}"]`
@@ -299,14 +341,22 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
 
     const line = new LL(src.current, dst, options);
 
-    // Reposition the line on diagram overflow scroll
-    const diagram = diagramRef.current;
-    const onScroll = () => line.position();
-    diagram.addEventListener("scroll", onScroll);
+    // Code modified from: https://github.com/cognitive-engineering-lab/aquascope/blob/main/frontend/packages/aquascope-editor/src/editor-utils/interpreter.tsx#L606
+    // Make arrows local to the diagram rather than global in the body
+    // See: https://github.com/anseki/leader-line/issues/54
+    let svgSelectors = [".leader-line"];
+    let svgElements = svgSelectors.map((sel) => {
+      let el = document.body.querySelector(`:scope > ${sel}`);
+      if (!el) throw new Error(`Missing LineLeader element: ${sel}`);
+      return el;
+    });
+
+    for (const svg of svgElements) {
+      arrowContainerRef.current.appendChild(svg);
+    }
 
     return () => {
-      line.remove();
-      diagram.removeEventListener("scroll", onScroll);
+      svgElements.forEach((el) => el.parentNode!.removeChild(el));
     };
   });
 
