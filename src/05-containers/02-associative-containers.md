@@ -79,15 +79,72 @@ A `map` is the standard way to associate a key with a value in C++. It works exa
 | `if (m.count(k)) ...` <br /> `if (m.contains(k)) ...` <sub>**(C++20)**</sub> | Checks if `k` is in the map. |
 | `m.empty()` | Checks if `m` is empty |
 
-#### Behind the scenes
+> Pay special attention to the fact that `m[k]` will **insert a default initialized value into `m` if `k` does not exist!** The default value corresponds to the parameterless constructor of `V`. For example, `false` for `bool`, `0` for `int`, `size_t`, `float`, and `double`, and an empty container for most container types. This can lead to strange behaviour, such as keys appearing in a map even if all you did was try to read a value. For example, the following snippet:
+> 
+> ```cpp
+> std::map<std::string, std::vector<int>> m;
+> auto v = m["Bjarne"];
+> std::cout << m.size() << std::endl;
+> ```
+>
+> prints `1` even though this code appears to only read the value of `"Bjarne"` from the map. The reason for this behaviour is that it makes certain algorithms trivial to implement. For example, consider the following code which counts characters in a string:
+>
+> ```cpp
+> std::string quote = "Peace if possible, truth at all costs";
+> std::map<char, size_t> counts;
+> for (char c : quote) {
+>   counts[c]++; 
+> }
+> ```
+>
+> Compare this to the equivalent Python code, which might need to check for the existence of each character in the map before attempting to increment its count:
+>
+> ```python
+> quote = "Peace if possible, truth at all costs"
+> counts = {}
+> for c in quote:
+>   if c not in counts:
+>     counts[c] = 0
+>   counts[c] += 1
+> ```
+>
+> In C++, the default-initialization of the value obviates this check!
 
 ### `std::set<T>`
 
 #### Common operations
 
-#### Behind the scenes
+### Behind the scenes
+
+You may be wondering: why do `std::map<K, V>` and `std::set<T>` impose the requirement that `K` and `T` have a `operator<`? The reason has to do with how these data structures are implemented behind the scenes. The ability to compare two elements allows us to build an efficient data structure that can quickly determine whether a key or value exists in a `map` or `set`.
+
+The C++ standard does not enforce any particular implementation for the `map` and `set`, but compilers will almost always implement these data structures with a [red-black tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree). In other words, `map` and `set` organize their elements as a tree of elements that allows efficient traversal. Let's see how this works for a `map` (`set` will function similarly). Consider the following code snippet:
+
+```cpp
+std::map<std::string, size_t> m {
+  { "Ludwig", 722 },
+  { "Amadeus", 626 },
+  { "Johann", 1128 },
+  { "Gustav", 64 },
+  { "Dmitri", 147 }
+}; `[]`
+```
+
+```memory
+L1 {
+  m = "map<string, size_t>" { size: 5, root: &root }
+  root => TreeNode { value: "pair<string, size_t>" { first: Johann, second: 1128 }, left: &l, right: &r }
+
+  l ==> TreeNode { value: "pair<string, size_t>" { first: Dmitri, second: 147 }, left: &ll, right: &lr }
+  r ==> TreeNode { value: "pair<string, size_t>" { first: Ludwig, second: 722 }, left: null, right: null }
+
+  ll ===> TreeNode { value: "pair<string, size_t>" { first: Amadeus, second: 626 }, left: null, right: null }
+  lr ===> TreeNode { value: "pair<string, size_t>" { first: Gustav, second: 64 }, left: null, right: null }
+}
+```
 
 ## Unordered Containers
+
 
 ### Requirements
 
