@@ -339,7 +339,7 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
       lineOptions
     );
 
-    new LL(src.current, dst, options);
+    const line = new LL(src.current, dst, options);
 
     // Code modified from: https://github.com/cognitive-engineering-lab/aquascope/blob/main/frontend/packages/aquascope-editor/src/editor-utils/interpreter.tsx#L606
     // Make arrows local to the diagram rather than global in the body
@@ -356,7 +356,8 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
     }
 
     return () => {
-      svgElements.forEach((el) => el.parentNode!.removeChild(el));
+      svgElements.forEach((el) => document.body.appendChild(el));
+      line.remove();
     };
   });
 

@@ -132,9 +132,6 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           width: "unset",
-          "& code": {
-            whiteSpace: "pre",
-          },
         },
       },
     },
