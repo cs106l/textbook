@@ -112,7 +112,11 @@ A `map` is the standard way to associate a key with a value in C++. It works exa
 
 ### `std::set<T>`
 
+A `set` is the standard way of storing a collection of unique elements in C++. No matter how many times you add the same element to a `set`, it's as if you only added it once.
+
 #### Common operations
+
+
 
 ### Behind the scenes
 
@@ -134,30 +138,41 @@ auto gustav = m["Gustav"];
 
 ```memory
 L1 {
+
+  #label subtitle "The map organizes its elements in memory as a [binary search tree](https://en.wikipedia.org/wiki/Binary_search_tree). Each `TreeNode` has a `std::pair` containing the key and value for the node, and `left` and `right` pointers to the next node in the sequence. The tree is laid out in such a way as to make finding the node associated with a given key fast, as shown on the next line."
+
   m = "map<string, size_t>" { size: 5, root: &root }
-  root => TreeNode { value: "pair<string, size_t>" { first: Johann, second: 1128 }, left: &l, right: &r }
+  root => TreeNode { value: { first: Johann, second: 1128 }, left: &l, right: &r }
 
-  l ==> TreeNode { value: "pair<string, size_t>" { first: Dmitri, second: 147 }, left: &ll, right: &lr }
-  r ==> TreeNode { value: "pair<string, size_t>" { first: Ludwig, second: 722 }, left: null, right: null }
+  l ==> TreeNode { value: { first: Dmitri, second: 147 }, left: &ll, right: &lr }
+  r ==> TreeNode { value: { first: Ludwig, second: 722 }, left: null, right: null }
 
-  ll ===> TreeNode { value: "pair<string, size_t>" { first: Amadeus, second: 626 }, left: null, right: null }
-  lr ===> TreeNode { value: "pair<string, size_t>" { first: Gustav, second: 64 }, left: null, right: null }
+  ll ===> TreeNode { value: { first: Amadeus, second: 626 }, left: null, right: null }
+  lr ===> TreeNode { value: { first: Gustav, second: 64 }, left: null, right: null }
 }
 
 L2 {
 
-  #label subtitle "```cpp
-  hello world
-  ```"
+  #label subtitle "To find the value associated with a given key, the `map` traverses its tree using a binary search algorithm. Starting with the root node, it compares the desired key using the provided comparison function (`operator<` by default) to see which direction traversal should continue:
+  
+    - `\"Gustav\" < \"Johann\"`, so we go **left**
+    - `\"Gustav\" >= \"Dmitri\"`, so we go **right**
+    - `\"Gustav\"` is not less than itself, so we have found the node we were looking for!
+
+  This is a simple example with five mappings, but imagine a tree with hundreds or thousands of mappings. Assuming our tree is well-balanced, each comparison we make would eliminates have of the nodes from consideration. 
+  
+  As you might expect, there is something special about the tree that allows this algorithm to work. Namely, all the keys in left subtree of a parent are less than the parent's key, and all of the keys in the right subtree are greater than the parent's key (this is what a binary search tree is). A `map` will perform better if its tree is roughly balanced—this is exactly what a [red black tree](https://en.wikipedia.org/wiki/Red-black_tree) (a specific kind of binary search tree) aims to accomplish.
+  "
 
   m = "map<string, size_t>" { size: 5, root: &root }
-  root => TreeNode { value: "pair<string, size_t>" { first: Johann, second: 1128 }, left: &l, right: &r }
+  gustav = 64
+  root => TreeNode { value: { first: Johann, second: 1128 }, left: &l, right: &r }
 
-  l ==> TreeNode { value: "pair<string, size_t>" { first: Dmitri, second: 147 }, left: &ll, right: &lr }
-  r ==> TreeNode { value: "pair<string, size_t>" { first: Ludwig, second: 722 }, left: null, right: null }
+  l ==> TreeNode { value: { first: Dmitri, second: 147 }, left: &ll, right: &lr }
+  r ==> TreeNode { value: { first: Ludwig, second: 722 }, left: null, right: null }
 
-  ll ===> TreeNode { value: "pair<string, size_t>" { first: Amadeus, second: 626 }, left: null, right: null }
-  lr ===> TreeNode { value: "pair<string, size_t>" { first: Gustav, second: 64 }, left: null, right: null }
+  ll ===> TreeNode { value: { first: Amadeus, second: 626 }, left: null, right: null }
+  lr ===> TreeNode { value: { first: Gustav, second: 64 }, left: null, right: null }
 
   #style:link { dash: { animation: true } } m.root root.left l.right
   #style:link { opacity: 0.5 } root.right l.left
@@ -165,6 +180,8 @@ L2 {
   #style:row highlight lr.value.second
 }
 ```
+
+A `set` uses the same red-black tree data structure under the hood to determine quickly determine if an element exists inside a set. `set` has no concept of a key-value pair, so its `TreeNode` behind the scenes is somewhat simpler: rather than storing a `pair` of key and value, it directly stores the set element in the node. Otherwise, `set` and `map` work exactly the same: conceptually, you can think of a `set` being somewhat like a `map` without any values.
 
 ## Unordered Containers
 

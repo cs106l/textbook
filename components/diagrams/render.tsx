@@ -113,7 +113,7 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
   const subdiagramRef = React.useRef<HTMLDivElement | null>(null);
   return (
     <DiagramContext.Provider value={{ ...context, subdiagramRef }}>
-      <Box className="memory-step" width={diagram.wide ? 1 : undefined}>
+      <Box className="memory-step" width={diagram.wide ? 1 : undefined} maxWidth={1}>
         <SubdiagramTextView text={diagram.text} />
         <Box
           display="flex"
