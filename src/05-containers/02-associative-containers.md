@@ -7,7 +7,7 @@ Associative containers are collections that organize their elements in terms of 
 
 ## Ordered Containers
 
-Ordered associative containers impose an ordering on their element types, allowing them to accelerate key lookups.
+Ordered containers, `map` and `set`, impose an ordering constraint on their element types, allowing them to achieve key lookups in logarithmic time.
 
 ### Requirements
 
@@ -71,12 +71,12 @@ A `map` is the standard way to associate a key with a value in C++. It works exa
 |-----------|--------|
 | `std::map<K, V> m` | Creates an empty map. See [above](#requirements) for initializing a map with a custom comparison function |
 | `std::map<K, V> m { { k1, v1 }, /* ... */ }` | Uniform initializes a map with key-value pairs `{k1, v1}`, `{k2, v2}`, etc. |
-| `auto v = m[k]` | Gets the value for a key `k`. **If `k` is not in the map, it will be inserted with the default value for `V`. |
-| `m[k] = v` | Sets or updates the value for a key `k`. |
-| `auto v = m.at(k)` | Gets the value for a key `k`. Will throw an error if `k` is not present in the map. |
+| `auto v = m[k]` | Gets the value for a key `k`. **If `k` is not in the map, it will be inserted with the default value for `V` |
+| `m[k] = v` | Sets or updates the value for a key `k` |
+| `auto v = m.at(k)` | Gets the value for a key `k`. Will throw an error if `k` is not present in the map |
 | `m.insert({ k, v })` <br /> `m.insert(p)` | Inserts an `std::pair p` (or the equivalent uniformly initialized pair using `k` and `v`) representing a key-value pair into the map **if it doesn't already exist** |
-| `m.erase(k)` | Removes the key `k` from the map. `k` does not need to be present in the map. |
-| `if (m.count(k)) ...` <br /> `if (m.contains(k)) ...` <sub>**(C++20)**</sub> | Checks if `k` is in the map. |
+| `m.erase(k)` | Removes the key `k` from the map. `k` does not need to be present in the map |
+| `if (m.count(k)) ...` <br /> `if (m.contains(k)) ...` <sub>**(since C++20)**</sub> | Checks if `k` is in the map |
 | `m.empty()` | Checks if `m` is empty |
 
 > Pay special attention to the fact that `m[k]` will **insert a default initialized value into `m` if `k` does not exist!** The default value corresponds to the parameterless constructor of `V`. For example, `false` for `bool`, `0` for `int`, `size_t`, `float`, and `double`, and an empty container for most container types. This can lead to strange behaviour, such as keys appearing in a map even if all you did was try to read a value. For example, the following snippet:
@@ -116,7 +116,13 @@ A `set` is the standard way of storing a collection of unique elements in C++. N
 
 #### Common operations
 
-
+| Expression | Result |
+|-----------|--------|
+| `std::set<T>` s | Creates an empty set |
+| `s.insert(e)` | Adds `e` to `s`. Calling `insert(e)` more than once has the same effect as calling it once |
+| `s.erase(e)` | Removes `e` from `s`. `e` does not need to be `s` |
+| `if (s.count(e)) ...` <br /> `if (s.contains(e)) ...` <sub>**(since C++20)**</sub> | Checks if `e` is in the set |
+| `s.empty()` | Checks if `s` is empty |
 
 ### Behind the scenes
 
@@ -185,8 +191,85 @@ A `set` uses the same red-black tree data structure under the hood to determine 
 
 ## Unordered Containers
 
+Unordered containers, `unordered_map` and `unordered_set`, perhaps more commonly known in other langauges as "hash tables", make use of hash and equality functions to achieve near constant-time key lookups.
 
 ### Requirements
+
+To use `std::unordered_map<K, V>` or `std::unordered_set<T>`, `K` or `T` must have an associated hash function and key-equality function.
+
+#### Hash function
+
+A hash function "randomly" scrambles up an element of type `K` into a value of type `size_t`. When formally defined, hash functions are deterministic—the same `K` will always produce the same `size_t`—but they are discontinuous—small changes in the input `K` will produce large, unpredictable changes in the output `size_t`. These properties are key to how unordered data structures accelerate their element lookups.
+
+Many types, e.g. `int`, `double`, `std::string`, have built-in hash functions (you can see the full list [here](https://en.cppreference.com/w/cpp/utility/hash)). Other seemingly basic types, such as `std::pair` and `std::tuple`, do not. To add a hash function to an unsupported type, do one of the following:
+
+1. **Specialize the `std::hash` functor.** This is the most common way to add a hash function to a type. It involves creating a <abbr title="">template specialization</abbr> for the `std::hash<T>` functor, which is the default strategy unordered containers use to hash their elements. The syntax is as follows:
+
+    ```cpp
+    template<>
+    struct std::hash<MyType>
+    {
+      std::size_t operator()(const MyType& o) const noexcept
+      {
+        // Calculate and return the hash of `o`...
+      }
+    };
+
+    std::unordered_map<MyType, std::string> my_map;
+    ```
+
+2. **Define a custom functor.** This is an alternative to the above syntax if you do not want to change the default hash function for all users of a type. For example:
+
+    ```cpp
+    struct MyHash {
+      std::size_t operator()(const MyType& o) const noexcept
+      {
+        // Calculate and return the hash of `o`...
+      }
+    };
+
+    std::unordered_map<MyType, std::string, MyHash> my_map;
+    ```
+
+3. **Use a lambda function.** Similar to the above, this is useful if you don't want to override the global `operator<`, and also avoids creating a new functor type. Functionally, it is the same as **2**:
+
+    ```cpp
+    int main() {
+    ---
+    auto hash = [](const MyType& o) {
+      // Calculate and return the hash of `o`...
+    };
+
+    /* The first number (10) is the starting number of buckets!
+     * See the behind the scenes section for more information about buckets. */
+    std::unordered_map<MyType, std::string, decltype(hash)> my_map(10, hash);
+    std::unordered_set<MyType, decltype(hash)> my_set(10, hash);
+    ---
+    }
+    ```
+
+When writing your own hash functions, make sure that the output `size_t` are well distributed—as we will see, the performance of the container you use depends on how "random" its hash function outputs are. It is worthwhile reading [this Wikiedia article](https://en.wikipedia.org/wiki/Hash_function#Hashing_integer_data_types) for more information on how to design a good hash function. A good way to combine hash values, for example, is to utilize bit-shift, XOR, and multiplication by prime numbers, as the following example of a hash function for an `std::vector<T>` demonstrates. Preferrably, use a third-party library like [`boost::hash_combine`](https://www.boost.org/doc/libs/1_43_0/doc/html/hash/combine.html) to combine hash values in a way that yields a good distribution over the integers.
+
+```cpp
+template <typename T>
+struct std::hash<std::vector<T>> {
+  std::size_t operator()(const std::vector<T>& vec) const {
+    std::size_t seed = vec.size();
+    for (const auto& elem : vec) {
+      size_t h = element_hash(elem);
+      h = ((h >> 16) ^ h) * 0x45d9f3b;
+      h = ((h >> 16) ^ h) * 0x45d9f3b;
+      h = (h >> 16) ^ h;
+      seed ^= h + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+
+  std::hash<T> element_hash{};
+};
+```
+
+#### Key equality function
 
 ### `std::unordered_map<K, V>`
 
