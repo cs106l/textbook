@@ -90,8 +90,6 @@ would not be because there is no `operator<` defined for `std::ifstream`. If a t
 
 A `map` is the standard way to associate a key with a value in C++. It works exactly like a Python dictionary or a JavaScript object, with a few exceptions noted below.
 
-#### Common operations
-
 | Expression | Result |
 |-----------|--------|
 | `std::map<K, V> m` | Creates an empty map. See [above](#requirements) for initializing a map with a custom comparison function |
@@ -138,8 +136,6 @@ A `map` is the standard way to associate a key with a value in C++. It works exa
 ### `std::set<T>`
 
 A `set` is the standard way of storing a collection of unique elements in C++. No matter how many times you add the same element to a `set`, it's as if you only added it once.
-
-#### Common operations
 
 | Expression | Result |
 |-----------|--------|
@@ -243,7 +239,7 @@ Many types, e.g. `int`, `double`, `std::string`, have built-in hash functions (y
     std::unordered_map<MyType, std::string> my_map;
     ```
 
-2. **Define a custom functor.** This is an alternative to the above syntax if you do not want to change the default hash function for all users of a type. For example:
+2. **Define a custom functor.** This is an alternative to the above syntax if you do not want to change the default hash function for all consumers of a type. For example:
 
     ```cpp
     struct MyHash {
@@ -273,7 +269,7 @@ Many types, e.g. `int`, `double`, `std::string`, have built-in hash functions (y
     }
     ```
 
-When writing your own hash functions, make sure that the output `size_t` are well distributed—as we will see, the performance of the container you use depends on how "random" its hash function outputs are. It is worthwhile reading [this Wikiedia article](https://en.wikipedia.org/wiki/Hash_function#Hashing_integer_data_types) for more information on how to design a good hash function. A good way to combine hash values, for example, is to utilize bit-shift, XOR, and multiplication by prime numbers, as the following example of a hash function for an `std::vector<T>` demonstrates. Preferrably, use a third-party library like [`boost::hash_combine`](https://www.boost.org/doc/libs/1_43_0/doc/html/hash/combine.html) to combine hash values in a way that yields a good distribution over the integers.
+When writing your own hash functions, make sure that the output `size_t` are well distributed—as we will see, the performance of the container you use depends on how "random" its hash function outputs are. It is worthwhile to read [this Wikiedia article](https://en.wikipedia.org/wiki/Hash_function#Hashing_integer_data_types) for more information on how to design a good hash function. A good way to combine hash values, for example, is to utilize bit-shift, XOR, and multiplication by prime numbers, as the following example of a hash function for an `std::vector<T>` demonstrates. Preferrably, use a third-party library like [`boost::hash_combine`](https://www.boost.org/doc/libs/1_43_0/doc/html/hash/combine.html) to combine hash values in a way that yields a good distribution over the integers.
 
 ```cpp
 template <typename T>
@@ -336,9 +332,7 @@ The equality function (or key-equality function for `unordered_map`) checks if t
 
 `unordered_map` is an accelerated version of `map` that allows looking up the value for a key in constant time, at the cost of using additional memory.
 
-#### Common operations
-
-`unordered_map` supports all of the operations of `std::map` (i.e. it can serve as a drop-in replacement for a `map`), as well as a few more operations specific to how it works [behind the scenes](#behind-the-scenes-1).
+`unordered_map` supports all of the operations of `std::map` (i.e. it can serve as a drop-in replacement for a `map`), as well as a few more operations specific to how it works [behind the scenes](#behind-the-scenes-1). Note that like `map`, the `operator[]` on `unordered_map` will default initialize values for keys which do not exist!
 
 | Expression | Result |
 |-----------|--------|
@@ -350,15 +344,13 @@ The equality function (or key-equality function for `unordered_map`) checks if t
 
 Similar to `unordered_map`, `unordered_set` is an accelerated version of `set` that allows checking set-membership in constant time. 
 
-#### Common operations
-
-`unordered_set` supports all of the operations of `std::set`, as well as the [common operations for `unordered_map`](#common-operations-2).
+`unordered_set` supports all of the operations of `std::set`, as well as the [additional operations listed for `unordered_map`](#stdunordered_mapk-v).
 
 ### Behind the scenes
 
 One of the performance bottlenecks of `map` and `set` is that to lookup an element, they must perform a binary search on their internal trees, taking $O(\log n)$ time. In most applications, this is acceptable, as $\log n$ even for very large $n$ is managable—even a `map` with one billion entries will only need to traverse $\log_2 10^9 \approx 30$ nodes to find a match in the worst case. However, if the overhead of this search is unacceptable, we can achieve faster lookup at the expense of higher memory usage by rearranging the way container elements are stored: this is exactly what `unordered_map` and `unordered_set` do.
 
-Let's take a look at how `unordered_map` works (as we will see, `unordered_set` works identically). Like `std::map`, the C++ standard enforces no restrictions on what data structure `unordered_map` uses to organize its elements, but compilers almost always use a [**separate chaining hash table**](https://en.wikipedia.org/wiki/Hash_table#Separate_chaining)[^1]. The map picks some value $b$ (known as the bucket count) and keeps track of an array of $b$ linked lists, known as the buckets. On insertion, each key-value pair is placed into one of the $b$ buckets as a depending on the value of $b$ and the map's hash function. Specifically, if $f$ is the hash function, then a key $k$ will go into the bucket with index $f(k) \mod b$. Note that hash functions are not injective: there can exist keys $k_1\neq k_2$ for which $f(k_1)=f(k_2)$[^2], so more than one key can end up in the same bucket. After taking the modulo by $b$, the chance of such a <abbr title="When two different keys produce the same hash value, causing them to be stored in the same bucket and potentially requiring additional comparisons to distinguish them">hash collision</abbr> occuring increases even more as the output of $f$ is squashed to fit inside the range $[0, b)$.
+Let's take a look at how `unordered_map` works (as we will see, `unordered_set` works identically). Like `std::map`, the C++ standard enforces no restrictions on what data structure `unordered_map` uses to organize its elements, but compilers almost always use a [**separate chaining hash table**](https://en.wikipedia.org/wiki/Hash_table#Separate_chaining)[^1]. The map picks some value $b$ (known as the bucket count) and keeps track of an array of $b$ linked lists, known as the buckets. On insertion, each key-value pair is placed into one of the $b$ buckets depending on the value of $b$ and the map's hash function. Specifically, if $f$ is the hash function, then a key $k$ will go into the bucket with index $f(k) \mod b$. Note that hash functions are not injective: there can exist keys $k_1\neq k_2$ for which $f(k_1)=f(k_2)$[^2], so more than one key can end up in the same bucket. After taking the modulo by $b$, the chance of such a <abbr title="When two different keys produce the same hash value, causing them to be stored in the same bucket and potentially requiring additional comparisons to distinguish them">hash collision</abbr> occuring increases even more as the output of $f$ is squashed to fit inside the range $[0, b)$.
 
 To determine the value of a key $k$, the `unordered_map` first determines the bucket index of $k$ and then loops through the key-value pairs of that bucket, applying the key-equality function $e$ to each one until a matching key (and corresponding value) is found. Assuming that evaluating $f$ and $e$ is $O(1)$ (an assumption that is often made in practice), then the time complexity of a key lookup will depend on the number of elements the map must search through within each bucket before finding a matching key—in other words, the number of items in the bucket. On average, an `unordered_map` with $n$ mappings and $b$ buckets will have $\alpha=\frac{n}{b}$ items per bucket. This value, $\alpha$, is called the <abbr title="The ratio of the number of stored elements to the total number of buckets, indicating how full the hash table is. In general, lower values yield better performance">**load factor**</abbr> of the `unordered_map`. 
 
@@ -372,10 +364,15 @@ std::unordered_map<std::string, size_t> m {
   { "Gustav", 64 },
   { "Dmitri", 147 }
 }; `[]`
+
+size_t amadeus = m["Amadeus"]; `[]`
+m.insert({ "Franz", 600 }); `[]`
 ```
 
 ```memory
 L1 {
+  #label subtitle "Here we can see the map has chosen $b=5$, and maintains 5 buckets. By random chance, two key-value pairs have landed in bucket 0 and none in bucket 2. The value $b=5$ was chosen arbitrarily—in fact, it can be customized in the `unordered_map` constructor. The only requirement on $b$ is that it meets the load factor requirement: $\\frac{n}{b}=\\alpha\\leq 1.0$. In this case, $\\alpha=\\frac{5}{5}$, or exactly $1.0$."
+
   m = "unordered_map<string, size_t>" { b: 5, buckets: &buckets }
   buckets => [ 0: &b0, 1: &b1, 2: null, 3: &b3, 4: &b4 ]
   b0 ==> ListNode { value: { first: "Gustav", second: 64 }, next: &next }
@@ -383,12 +380,73 @@ L1 {
   b1 ==> ListNode { value: { first: "Dmitri", second: 147 }, next: null }
   b3 ==> ListNode { value: { first: "Johann", second: 1128 }, next: null }
   b4 ==> ListNode { value: { first: "Ludwig", second: 722 }, next: null }
+
+  #style:link { path: straight } buckets.*
+}
+
+L2 {
+  #label subtitle "To find the value for `\"Amadeus\"`, lookup proceeds as follows. First we compute $f(\\texttt{\"Amadeus\"}) \\mod 5$ to find the bucket index (0). Then we loop through all key-value pairs in bucket 0 until we find the one which equals `\"Amadeus\"` according to the key-equality function. `\"Gustav\"` is skipped.
+  
+  **Note:** Even if bucket 0 had only a single element, we would still need to loop through its elements and apply the key-equality function, since it might happen to have a single key that coincidentally has the same bucket index as `\"Amadeus\"`."
+
+  m = "unordered_map<string, size_t>" { b: 5, buckets: &buckets }
+  amadeus = 626
+
+  buckets => [ 0: &b0, 1: &b1, 2: null, 3: &b3, 4: &b4 ]
+  b0 ==> ListNode { value: { first: "Gustav", second: 64 }, next: &next }
+  next ===> ListNode { value: { first: "Amadeus", second: 626 }, next: null }
+  b1 ==> ListNode { value: { first: "Dmitri", second: 147 }, next: null }
+  b3 ==> ListNode { value: { first: "Johann", second: 1128 }, next: null }
+  b4 ==> ListNode { value: { first: "Ludwig", second: 722 }, next: null }
+
+  #style { opacity: 0.5 } b1 b3 b4 buckets.1 buckets.2 buckets.3 buckets.4
+  #style:link { opacity: 0.5 } buckets.1 buckets.2 buckets.3 buckets.4
+  #style:link { dash: { animation: true }} m.buckets buckets.0 b0.next
+
+  #style:row { backgroundColor: "var(--palette-error-light)" } b0.value.first
+  #style:row { backgroundColor: "var(--palette-success-light)" } next.value.first
+
+  #style:link { path: straight } buckets.*
+}
+
+L3 {
+  #label subtitle "After inserting the key-value pair `{ \"Franz\", 600 }` to the map, the resulting load factor was $\\alpha=\\frac{6}{5}=1.2 \\not \\leq 1.0$. Because $\\alpha$ exceeded the threshold of $1.0$, the map had to allocate more buckets and rehash. To choose the new bucket count, the old bucket count is typically doubled. Some compilers, such as G++ in this example, will further stipulate that the new bucket count always be a prime number, as taking the modulo by this count gives a better distribution of items over the buckets (11 is used in this example). Notice that after rehashing, the relative arrangement of items has completely changed as a result of the new bucket count."
+
+  m = "unordered_map<string, size_t>" { b: 11, buckets: &buckets }
+  amadeus = 626
+
+  buckets => [ 0: null, 1: null, 2: &b2, 3: &b3, 4: null, 5: null, 6: null, 7: &b7, 8: null, 9: &b9, 10: &b10 ]
+
+  b2  ==> ListNode { value: { first: "Dmitri", second: 147 }, next: &next }
+  b3  ==> ListNode { value: { first: "Ludwig", second: 722 }, next: null }
+  b7  ==> ListNode { value: { first: "Amadeus", second: 626 }, next: null }
+  b9  ==> ListNode { value: { first: "Gustav", second: 64 }, next: null }
+  b10 ==> ListNode { value: { first: "Franz", second: 600 }, next: null }
+  next ===> ListNode { value: { first: "Johann", second: 1128 }, next: null }
+
+  #style:link { path: straight } buckets.*
 }
 ```
+
+As was the case for `set`, `unordered_set` uses the same hash-table data structure as `unordered_map`. You can think of `unordered_set` as being implemented as a hash-table whose nodes contain only the elements (as opposed to key-value pairs).
 
 [^1]: Other hashing strategies exist, such as open addressing, but separate chaining is used in practice due to certain time complexity restrictions guaranteed by methods of `unordered_map` and `unordered_set` in the C++ standard.
 
 [^2]: One intuitive way to make sense of this fact is to consider the hash function for a `std::string`. Intuitively, there are many more possible `std::string` instances than `size_t`, so there must be at least two `std::string` instances with the same hash value.
 
-### Ordered vs. unordered containers
+## Which should I use?
+
+A perennial question among C++ developers is: given the choice between a `map` and an `unordered_map`, which one should I choose? The answer to this question will depend on the specific problem you are solving and what your requirements are. As a general rule of thumb, `unordered_map` will offer superior performance over `map` while using far more memory (at the very least, a lot of empty buckets are needed to keep the load factor small). In general, as memory tends to be less of a concern in software development, `unordered_map` seems to be the more promising choice. However, in select circumstances `map` can still outperform `unordered_map`. Below is a (far from an exhaustive) table of where each container type shines:
+
+| Scenario | Ordered Container (`map`/`set`) | Unordered Container (`unordered_map`/`unordered_set`) |
+|----------|---------------------------------|-------------------------------------------------------|
+| **Ordering** | ✔️ Allows iteration of keys/element in sorted order | ❌ Has no dependable order. Elements are iterated in an essentially random order |
+| **Speed** | ❌ Finding/removing an element requires a binary tree traversal, average $O(\log n)$ | ✔️ Hash functions allows near constant-time element lookup and removal, average $O(1)$ |
+| **Memory** | ✔️ Small memory footprint, including only the element data and bookkeeping data for binary search tree | ❌ Large memory footprint, must allocate many empty buckets in order to keep load factor small |
+| **Element operations** | ✔️ Comparing elements using `operator<` is usually faster, since `operator<` often only needs to examine part of its operands to determine that one is smaller | ❌ Must invoke hash function, which must inspect the entire key object, and equality function |
+| **Worst-case lookup** | ✔️ Looking up an element takes at most $O(\log n)$, requiring a tree traversal | ❌ Looking up an element takes at most $O(n)$, e.g. if poor choice of hash function places all elements in the same bucket |
+| **Worst-case resize** | ✔️ Adding elements is always $O(\log n)$ in the worst case, requiring a tree traversal | ❌ Adding elements may trigger a rehash, taking $O(n^2)$ in the worst case | 
+| **[Working set](https://en.wikipedia.org/wiki/Working_set)**[^3] | ✔️ Tends to preserve its working set, i.e. the same set of nodes are frequently accessed during lookups, even as the container resizes | ❌ Rehashing essentially produces a new working set. After rehashing, the buckets are completely rearranged, causing cache lines that were previously hot to become cold and vice-versa.
+
+[^3]: The working set of a program is the set of locations in memory it frequently accesses. For reasons that are beyond the scope of this textbook, low-latency applications benefit from having a working set that doesn't change much. Accessing the same addresses frequently is usually faster than accessing many different locations, which can happen, for example, when an `unordered_map` has to rehash.
 
