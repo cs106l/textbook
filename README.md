@@ -27,8 +27,8 @@ On completion, we plan for the textbook to have the following contents (may chan
     1. Compilation
     2. Types and Structs
     3. Initialization and References
-    4. Pointers
-    5. Streams
+    4. Streams
+    5. Pointers
 3. Classes
     1. Classes
     2. Inheritance
