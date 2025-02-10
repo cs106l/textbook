@@ -273,14 +273,23 @@ function locateValuesRec(
 
   /* Array subscript */
   if (typeof segment === "number") {
-    if (parent.kind !== "array")
-      return fail(`cannot reference index ${segment} of non-array value {}`);
+    if (parent.kind !== "array" && parent.kind !== "object")
+      return fail(
+        `cannot reference index ${segment} of non-array, non-object value {}`
+      );
 
     const length = parent.value.length;
     if (segment < -length || segment >= length)
       return fail(
         `index ${segment} is out of bounds for array {} of length ${length}`
       );
+
+    const valueIdx = segment < 0 ? segment + length : segment;
+    const value =
+      parent.kind === "array"
+        ? parent.value[valueIdx]
+        : parent.value[valueIdx].value;
+
     return locateValuesRec(
       globals,
       loc,
@@ -288,15 +297,15 @@ function locateValuesRec(
       values,
       source,
       [...parentPath, segment],
-      parent.value[segment < 0 ? segment + length : segment]
+      value
     );
   }
 
   /* Array slice */
   if (typeof segment === "object") {
     const fmt = formatSlice(segment);
-    if (parent.kind !== "array")
-      return fail(`cannot take slice ${fmt} of non-array value {}`);
+    if (parent.kind !== "array" && parent.kind !== "object")
+      return fail(`cannot take slice ${fmt} of non-array, non-object value {}`);
 
     const length = parent.value.length;
     let { start, end, stride } = segment;
@@ -322,7 +331,9 @@ function locateValuesRec(
         values,
         source,
         [...parentPath, sliceIdx],
-        parent.value[sliceIdx]
+        parent.kind === "array"
+          ? parent.value[sliceIdx]
+          : parent.value[sliceIdx].value
       );
     }
 

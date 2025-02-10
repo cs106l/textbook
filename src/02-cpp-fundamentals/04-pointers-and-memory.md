@@ -142,8 +142,112 @@ Having a separate heap addresses all of the limitations of the stack:
 
 Using memory on the heap is typically slower than using memory on the stack. On the one hand, this is because allocating on the heap requires the allocator to search for an open location, whereas the stack merely needs to push onto whereever the top of the stack is currently located. On the other hand, heap memory can become fragmented and more widely dispersed than stack memory due to the way its allocated. Continuing the restaurant analogy, imagine a server delivering orders to tables. It's more efficient to deliver all food to one table before continuing on to the next. Bringing one dish to table A, then another to table B, then another to table A again, would require more trips and be a slower process. By the same token, a processor can do its job faster if it accesses memory that tends to be closer together (e.g. the stack) than more widely distributed (the heap). This is known as the **principle of locality**.
 
-As previously mentioned, we must keep track of **pointers** to the allocated chunks to manipulate their contents and to eventually free them up for future use. How do pointers work in C++?
+As previously mentioned, we must keep track of **pointers** to the allocated chunks to manipulate their contents and to eventually free them up for future use. But what are pointers and how do they work in C++?
 
 ## Pointers
 
+A **pointer** in C++ is both the address of an object in memory, and the way we represent that address in code. In byte-addressable memory (which most computers use), each <abbr title="The smallest addressable unit of memory in most computer systems, typically consisting of 8 bits">byte</abbr> in the program's address space is identified by a number starting from zero and counting upward by one&mdash;the *address* of each byte. An object may span multiple bytes in memory, in which case the address of the entire object is the address of its first byte (i.e. the one with the lowest address). For example, on most systems, an `int` takes up 4 bytes or 32 bits of space. If we were to inspect the memory of a single integer, we might see something like this:
 
+```cpp
+int main() {
+  int x = 106;
+  return 0;
+}
+```
+
+```memory
+
+#label subtitle "On a particular run of this program, the memory for `x` started at address `0x7fff4a5ff71c`. Note that addresses are typically written in hexadecimal notation (base 16), as opposed to decimal (base 10), for brevity. The first byte of `x` is `01101010`, the binary equivalent of `106`. The memory above and below `x` is unknown, and could take on any value."
+
+0x7fff4a5ff71a = ????????
+0x7fff4a5ff71b = ????????
+
+main:
+0x7fff4a5ff71c = 01101010
+0x7fff4a5ff71d = 00000000
+0x7fff4a5ff71e = 00000000
+0x7fff4a5ff71f = 00000000
+
+other(""):
+0x7fff4a5ff720 = ????????
+0x7fff4a5ff721 = ????????
+
+#style:value highlight main
+```
+
+We can get a pointer to `x` using `operator&` (known as the **address-of operator**), which takes in a variable and returns the pointer to that variable (i.e. the address of that variable). Consider a slightly modified version of the above snippet:
+
+```cpp
+int main() {
+  int x = 106;
+  `[int* x_ptr = &x;]`
+  return 0;
+}
+```
+
+```memory
+conceptual {
+  #label title ""
+  #label subtitle "Conceptually, we can think of `x_ptr` as *pointing* to wherever `x` is located in memory."
+
+  main:
+  x = 106
+  x_ptr = &main.x
+
+  #style:row highlight main.x_ptr
+  #style:link { endSocket: right } main.x_ptr
+}
+
+actual {
+  #label title ""
+  #label subtitle "In reality, `x_ptr` stores the address of `x`. More specifically, `x_ptr` is itself is a number whose value is the address of the first byte of `x`. Notice that `x_ptr` takes up 8 bytes of space (in fact, on a 64-bit system, all pointers takes up 8 bytes of space)."
+
+  0x7fff4a5ff71a = "????????      "
+  0x7fff4a5ff71b = ????????
+
+  main:
+  0x7fff4a5ff71c = 01101010
+  0x7fff4a5ff71d = 00000000
+  0x7fff4a5ff71e = 00000000
+  0x7fff4a5ff71f = 00000000
+  0x7fff4a5ff720 = 0x7fff4a5ff71c
+
+  other(""):
+  0x7fff4a5ff728 = "????????      "
+  0x7fff4a5ff729 = ????????
+
+  #style:row highlight main[-1]
+}
+
+caption {
+  #label title ""
+  #label subtitle "In all future diagrams in this textbook, we will use arrows to represent pointers, but remember, a pointer is just a number containing the address of the thing it points to!"
+}
+```
+
+If we were to print out `x_ptr` in the code above, we would simply see the address it contains (`0x7fff4a5ff71c`). However, given a pointer, we can *dereference* it to get the actual value it points to:
+
+```cpp
+int main() {
+  int x = 106;
+  int* x_ptr = &x;
+
+---
+std::cout << x << "\n";       // Prints 106
+std::cout << x_ptr << "\n";   // Prints 0x7fff4a5ff71c
+std::cout << *x_ptr << "\n";  // Prints 106
+---
+
+  return 0;
+}
+```
+
+We will now discuss the syntax of pointers, including how they are dereferenced.
+
+### Pointer Types
+
+### Pointers to The Heap
+
+### Pointer Arithmetic
+
+### Relationship to References
