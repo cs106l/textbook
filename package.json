@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "prebuild": "npx ohm generateBundles --withTypes components/diagrams/grammar.ohm",
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
