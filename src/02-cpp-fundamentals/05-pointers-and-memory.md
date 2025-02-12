@@ -250,6 +250,8 @@ For any type `T`, `T*` is the type of a pointer to an object of type `T`. Under 
 
 > On 64-bit systems, the size of a pointer will always be 64 bits (8 bytes). On 32-bit systems, a pointer will take up 32 bits (4 bytes). In effect, this places an upper bound on the amount of memory a program can utilize&mdash;a program on a 32-bit machine can at most address $2^{32}\text{B}\approx4\text{GB}$. In fact, this was one of the driving motivations for moving to 64-bit machines: they can address (and therefore make use of) much more memory![^3]
 
+[^3]: In reality, 64-bit machines cannot address $2^{64}$ bytes of memory, even if there was a way to store that much space on device (at this point, there is not&mdash;$2^{64}\text{ bytes}\approx18\text{ exabytes}$, or about 18 billion gigabytes). 64-bit CPUs will typically only use some portion of the address bits (for example, Intel processors commonly use only the lower 48 bits for architectural reasons).
+
 Given a `T*` ptr, we can get the value of type `T` that it points to through the **indirection operator**, `*`. This is known as *dereferencing* a pointer. To be precise, `operator*`, returns a `T&`, or a reference to `T`. Why? This technicality means that dereferencing a pointer does not make any copies of the pointed-to object&mdash;it merely accesses its already-existing memory. Furthermore, it allows us to use the indirection operator to modify the underlying data, e.g.:
 
 ```cpp
@@ -342,7 +344,7 @@ Indeed, if we wanted to prevent the pointer itself from being changed, we could 
 | **non-`const` Pointer** | `T*` | `const T*` <sub>(or `T const*`)</sub> | 
 | **`const` Pointer** | `T* const` | `const T* const` <sub>(or `T const* const`)</sub> |
 
-There is a special value, `nullptr`, which represents a pointer to no object. `nullptr` can be cast to any of the above pointer types and any type `T`. Under the hood, `nullptr` always stores the special address `0`. **Be careful! You cannot dereference a `nullptr`** as it doesn't point to an object. Attempting to do so, whether through `operator*` or `operator->`, will result in a segmentation fault.
+There is a special value, `nullptr`, which represents a pointer to no object. It is commonly used to represent the absence of a value. `nullptr` can be cast to any of the above pointer types and any type `T`, and under the hood, `nullptr` always stores the special address `0`. **Be careful! You cannot dereference a `nullptr`** as it doesn't point to any object. Attempting to do so, whether through `operator*` or `operator->`, will result in a segmentation fault.
 
 ```cpp
 int main() {
@@ -365,17 +367,95 @@ ptr = null
 
 In C++, `nullptr` has a special type, `nullptr_t`. The only instance of `nullptr_t` is `nullptr`, and it automatically converts into an instance of any pointer type.
 
-[^3]: In reality, 64-bit machines cannot address $2^{64}$ bytes of memory, even if there was a way to store that much space on device (at this point, there is not&mdash;$2^{64}\text{ bytes}\approx18\text{ exabytes}$, or about 18 billion gigabytes). 64-bit CPUs will typically only use some portion of the address bits (for example, Intel processors commonly use only the lower 48 bits for architectural reasons).
 
 ### Pointers to The Heap
 
 > **⚠️ Note:** In modern C++, it is no longer recommended to use raw pointers, e.g. `T*`, to refer to heap allocations, as this can lead to memory leaks if you forget to deallocate them. Consider using *smart pointers* instead, such as `unique_ptr` and `shared_ptr`, which automatically deallocate. These will be discussed in a later chapter.
 
-So far, the examples we have shown have included pointers to regions of the stack, e.g. `x_ptr` which points to a local variable `x`. This is uncommon in C++, as references (discussed in a previous chapter and more below) are more commonly used to accomplish the same thing. Where you may see pointers more commonly used is to refer to allocations on the heap. As discussed previously, the heap stores dynamically allocated memory that can outlive a function invocation. To allocate an object of type `T` on the heap, we can request it from the allocator using `operator new`:
+So far, the examples we have shown have included pointers to regions of the stack, e.g. `x_ptr` which points to a local variable `x`. This is uncommon in C++, as references (discussed in a previous chapter and more below) are more commonly used to accomplish the same thing. Where you may see pointers more often used is to refer to allocations on the heap. As discussed previously, the heap stores dynamically allocated memory that can outlive a function invocation. To allocate an object of type `T` on the heap, we can request it from the allocator using `operator new`:
 
 ```cpp
 T* ptr = new T;
 ```
+
+**Note that this version of `new` does not initialize `T`.** It's memory will be whatever was left in the allocated chunk, typically garbage data. Going back to the restaurant example discussed previously, it's as if the restaurant sat you down at an open table without clearing the dishes from the previous guests! To actually initialize the object, you can use uniform initialization, e.g.
+
+```cpp
+T* ptr = new T { /* Args to initialize T */ };
+```
+
+or <abbr title="When an object is explicitly initialized with empty braces {} or () (e.g., T{} or T()), zero-initializing fundamental types (double, int, etc.) and invoking the default constructor for class types if available">value initialization</abbr>: 
+
+```cpp
+T* ptr = new T();
+```
+
+To see the difference, consider the case where `T = std::pair<int, double>`:
+
+```cpp
+auto ptr1 = new std::pair<int, double>;
+auto ptr2 = new std::pair<int, double> { 106, 3.14 };
+auto ptr3 = new std::pair<int, double>();
+```
+
+```memory
+#label subtitle "We cannot know for sure what `*ptr1` contains, since it wasn't initialized. However, `*ptr2` is definitely initialized with `106` and `3.14`, and `*ptr3` is value initialized with zero-initialized members."
+
+garbage => "pair<int, double>" { first: ????, second: ???? }
+known => "pair<int, double>" { first: 106, second: 3.14 }
+zero => "pair<int, double>" { first: 0, second: 0 }
+ptr1 = &garbage
+ptr2 = &known
+ptr3 = &zero
+```
+
+Once you have a `T*` to the heap, you can deference it, pass the pointer to other functions, store it in another data structure, etc. However, you must remember to *deallocate* the region once you are done with it. This can be done by passing the same pointer returned by `new` to `operator delete`:
+
+```cpp
+delete ptr;
+```
+
+which frees the memory pointed to by `ptr`. Calling `delete` on a pointer not previously returned by `new` is invalid, as is attempting to `delete` the same pointer twice. The one exception to this rule is `nullptr`: `delete`ing `nullptr` is always valid and does nothing. Failing to `delete` pointer that was allocated with `new` will not cause your program to crash, but will lead to a <abbr title="When dynamically allocated memory (via new) is not properly deallocated (delete), leading to wasted memory that remains inaccessible until the program terminates">**memory leak**</abbr>, causing your program to use more memory than it requires.
+
+Often times, we don't want to allocate space for a single object, but for multiple objects at a time. C++ supports this through **array allocations** and `operator new[]`:
+
+```cpp
+T* ptr = new T[n];
+```
+
+The snippet above allocates a *contiguous* region of memory large enough to hold `n` instances of `T`. Importantly, `n` can be a dynamically determined value&mdash;it does not need to be known at compile time, allowing us to overcome the static-size constraint placed on stack memory/local variables. This syntax also does not initialize any of the elements in the region. If we wanted to initialize the elements, we can use:
+
+```cpp
+T* ptr1 = new T[n]();
+T* ptr2 = new T[n] { t1, t2, /* ... */, tn };
+```
+
+For example, consider the contents of memory produced by this code:
+
+```cpp
+double* ptr0 = new double[5];
+double* ptr1 = new double[5]();
+double* ptr3 = new double[5]{ 1, 2, 3, 4, 5 };
+```
+
+```memory
+a0 => b"?????"
+a1 => b"00000"
+a2 => b"12345"
+
+ptr0 = &a0
+ptr1 = &a1
+ptr2 = &a2
+```
+
+**When allocating an array with `new[]`, you must use the corresponding `delete[]` when you are finished with it.** Attempting to deallocate such a pointer using `delete` (without the `[]`) is invalid.
+
+```cpp
+T* ptr = new T[n];
+delete[] ptr;
+```
+
+Once we have a pointer to an array, an important question arises: how do we access elements in the array? We do this using pointer arithmetic.
 
 ### Pointer Arithmetic
 
