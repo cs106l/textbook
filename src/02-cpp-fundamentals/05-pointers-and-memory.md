@@ -188,7 +188,7 @@ int main() {
 ```memory
 conceptual {
   #label title ""
-  #label subtitle "Conceptually, we can think of `x_ptr` as *pointing* to wherever `x` is located in memory."
+  #label subtitle "`x_ptr` is a pointer to `x`. Conceptually, we can think of `x_ptr` as *pointing* to wherever `x` is located in memory."
 
   main:
   x = 106
@@ -200,7 +200,7 @@ conceptual {
 
 actual {
   #label title ""
-  #label subtitle "In reality, `x_ptr` stores the address of `x`. More specifically, `x_ptr` is itself is a number whose value is the address of the first byte of `x`. Notice that `x_ptr` takes up 8 bytes of space (in fact, on a 64-bit system, all pointers takes up 8 bytes of space)."
+  #label subtitle "In reality, `x_ptr` stores the address of `x`. More specifically, `x_ptr` is itself is a number whose value is the address of the first byte of `x`. Notice that `x_ptr` takes up 8 bytes of space (in fact, on a 64-bit system, all pointers take up 8 bytes of space)."
 
   0x7fff4a5ff71a = "????????      "
   0x7fff4a5ff71b = ????????
@@ -246,7 +246,136 @@ We will now discuss the syntax of pointers, including how they are dereferenced.
 
 ### Pointer Types
 
+For any type `T`, `T*` is the type of a pointer to an object of type `T`. Under the hood, every pointer is represented as an address to the starting-byte of an object&mdash;so why include information about the type? Remember that C++ is a [type-safe language](./types-and-structs), so it matters whether the object we're pointing to is an `int` or a `std::string` as it will change what operations are supported for the pointed-to object.
+
+> On 64-bit systems, the size of a pointer will always be 64 bits (8 bytes). On 32-bit systems, a pointer will take up 32 bits (4 bytes). In effect, this places an upper bound on the amount of memory a program can utilize&mdash;a program on a 32-bit machine can at most address $2^{32}\text{B}\approx4\text{GB}$. In fact, this was one of the driving motivations for moving to 64-bit machines: they can address (and therefore make use of) much more memory![^3]
+
+Given a `T*` ptr, we can get the value of type `T` that it points to through the **indirection operator**, `*`. This is known as *dereferencing* a pointer. To be precise, `operator*`, returns a `T&`, or a reference to `T`. Why? This technicality means that dereferencing a pointer does not make any copies of the pointed-to object&mdash;it merely accesses its already-existing memory. Furthermore, it allows us to use the indirection operator to modify the underlying data, e.g.:
+
+```cpp
+int main() {
+---
+int x = 106;
+int* x_ptr = &x; `[]`
+*x_ptr = 107; `[]`
+---
+  return 0;
+}
+```
+
+```memory
+L1 {
+  main:
+  x = 106
+  x_ptr = &main.x
+
+  #style:link { endSocket: right } main.x_ptr
+}
+
+L2 {
+  #label subtitle "Since indirection returns an `int&`, we can modify `x` through `x_ptr`, changing it from `106` to `107`."
+
+  main:
+  x = 107
+  x_ptr = &main.x
+
+  #style:link { endSocket: right } main.x_ptr
+}
+```
+
+If `T` happens to be a structure, e.g. an `std::pair<double, double>`, we can directly access its members through the **member access operator**, `operator->`. This is the same as first dereferencing the pointer and then accessing the member. For example:
+
+```cpp
+int main() {
+---
+std::pair<double, double> my_pair { 10, 20 };
+auto* ptr = &my_pair; `[]`
+double second = ptr->second; `[]`    // Same as (*ptr).first
+---
+  return 0;
+}
+```
+
+```memory
+L1 {
+  #label subtitle "`ptr` points to `my_pair`. Note the use of `auto` to have the compiler infer the type"
+
+  main:
+  my_pair = "pair<double, double>" { first: 10, second: 20 }
+  ptr = &main.my_pair.second
+
+  #style:link { endSocket: right } main.ptr
+}
+
+L2 {
+  #label subtitle "The `->` operator *dereferences* a specific member within the pointed-to object."
+
+  main:
+  my_pair = "pair<double, double>" { first: 10, second: 20 }
+  ptr = &main.my_pair.second
+  second = 20
+
+  #style:link { endSocket: right } main.ptr
+}
+```
+
+Every `T` also has a *pointer-to-const* type, `const T*` (also written `T const*`) which represents a pointer to a `const T`. We cannot change the object pointed to by this kind of pointer. However, we can change what the pointer itself points to. For example:
+
+```cpp
+int main() {
+---
+int x = 106;
+int y = 107;
+
+const int* ptr = &x;
+// *ptr = 107;        // Not allowed, `ptr` points to `const int`
+ptr = &y;             // However, we can change where `ptr` points to
+---
+  return 0;
+}
+```
+
+Indeed, if we wanted to prevent the pointer itself from being changed, we could use a *const-pointer*, e.g. `T* const`. The pointer itself cannot be changed (i.e pointed to a different object), but we can still change the underlying object itself. Hence, every `T` has four pointer types, represented in the table below:
+
+| | **non-`const` Pointee** | **`const` Pointee** |
+|-|---------------------|---------------------|
+| **non-`const` Pointer** | `T*` | `const T*` <sub>(or `T const*`)</sub> | 
+| **`const` Pointer** | `T* const` | `const T* const` <sub>(or `T const* const`)</sub> |
+
+There is a special value, `nullptr`, which represents a pointer to no object. `nullptr` can be cast to any of the above pointer types and any type `T`. Under the hood, `nullptr` always stores the special address `0`. **Be careful! You cannot dereference a `nullptr`** as it doesn't point to an object. Attempting to do so, whether through `operator*` or `operator->`, will result in a segmentation fault.
+
+```cpp
+int main() {
+---
+int* ptr = nullptr;
+
+// Either of these commented lines would crash:
+//  int x = *ptr;
+//  *ptr = 106;
+---
+  return 0;
+}
+```
+
+```memory
+#label subtitle "In this textbook, we will represent `nullptr` with a `⦻` character in diagrams."
+main:
+ptr = null
+```
+
+In C++, `nullptr` has a special type, `nullptr_t`. The only instance of `nullptr_t` is `nullptr`, and it automatically converts into an instance of any pointer type.
+
+[^3]: In reality, 64-bit machines cannot address $2^{64}$ bytes of memory, even if there was a way to store that much space on device (at this point, there is not&mdash;$2^{64}\text{ bytes}\approx18\text{ exabytes}$, or about 18 billion gigabytes). 64-bit CPUs will typically only use some portion of the address bits (for example, Intel processors commonly use only the lower 48 bits for architectural reasons).
+
 ### Pointers to The Heap
+
+> **⚠️ Note:** In modern C++, it is no longer recommended to use raw pointers, e.g. `T*`, to refer to heap allocations, as this can lead to memory leaks if you forget to deallocate them. Consider using *smart pointers* instead, such as `unique_ptr` and `shared_ptr`, which automatically deallocate. These will be discussed in a later chapter.
+
+So far, the examples we have shown have included pointers to regions of the stack, e.g. `x_ptr` which points to a local variable `x`. This is uncommon in C++, as references (discussed in a previous chapter and more below) are more commonly used to accomplish the same thing. Where you may see pointers more commonly used is to refer to allocations on the heap. As discussed previously, the heap stores dynamically allocated memory that can outlive a function invocation. To allocate an object of type `T` on the heap, we can request it from the allocator using `operator new`:
+
+```cpp
+T* ptr = new T;
+```
 
 ### Pointer Arithmetic
 
