@@ -455,8 +455,89 @@ T* ptr = new T[n];
 delete[] ptr;
 ```
 
-Once we have a pointer to an array, an important question arises: how do we access elements in the array? We do this using pointer arithmetic.
+> **Note:** There is no difference syntactically between a pointer to an object and a pointer to an array. The programmer is responsible for knowing the difference between the two and using the appropriate operations, e.g. calling the right version of `delete` on it.
 
 ### Pointer Arithmetic
+
+Given an array pointer `T*`, how do we access the $i^\text{th}$ element? One way is using <abbr title="Allows performing operations like addition and subtraction on pointers, enabling traversal of arrays and dynamic memory by leveraging the underlying memory addresses">**pointer arithmetic**</abbr>, which makes use of two key facts:
+
+* Every type `T` has a fixed size at compile time.
+* Array allocations (returned by `new[]`) are contiguous in memory.
+
+The first fact enables the compiler to know precisely how many bytes to allocate to an array of `n` elements of type `T`&mdash;indeed, we can call `sizeof(T)` to get the compile-time size of `T`, so `n * sizeof(T)` is the *minimum* number of bytes a call to `new T[n]` must allocate. The second fact, in combination with the first, enables us to access individual elements in arrays. As the example below demonstrates, adding an integer to a pointer increments that pointers address *in multiples of `sizeof(T)`*:
+
+```cpp
+int main() {
+---
+int* arr = new int[4]();
+int* ptr_to_2nd = arr + 1;
+int* ptr_to_3rd = arr + 2;
+---
+  delete[] arr;
+  return 0;
+}
+```
+
+```memory
+conceptual {
+  #label title ""
+  #label subtitle "`arr` points to the beginning of the allocated array. Adding `1` to `arr` gives a pointer to the element `1` after `arr` in memory, `2` gives the pointer `2` after `arr`, etc."
+
+  data => b"0000"
+  arr = &data
+  ptr_to_2nd = &data[1]
+  ptr_to_3rd = &data[2]
+
+  #style:link { path: straight } arr
+  #style highlight data[::2]
+}
+
+actual {
+  #label title ""
+  #label subtitle "Under the hood, adding an integer to a number adds or subtracts `sizeof(T)` multiples of bytes from its underlying address. In this case, `sizeof(int) = 4`, so `arr + 1`, for example, adds 4 bytes to `arr`'s underlying address."
+
+  heap => {
+    0x7ffffd098f16: ????????,
+    0x7ffffd098f17: ????????,
+    0x7ffffd098f18: 00000000,
+    0x7ffffd098f19: 00000000,
+    0x7ffffd098f1a: 00000000,
+    0x7ffffd098f1b: 00000000,
+    0x7ffffd098f1c: 00000000,
+    0x7ffffd098f1d: 00000000,
+    0x7ffffd098f1e: 00000000,
+    0x7ffffd098f1f: 00000000,
+    0x7ffffd098f20: 00000000,
+    0x7ffffd098f21: 00000000,
+    0x7ffffd098f22: 00000000,
+    0x7ffffd098f23: 00000000,
+    0x7ffffd098f24: 00000000,
+    0x7ffffd098f25: 00000000,
+    0x7ffffd098f26: 00000000,
+    0x7ffffd098f27: 00000000,
+    0x7ffffd098f28: ????????,
+    0x7ffffd098f29: ????????
+  }
+
+  main:
+  arr = &heap.0x7ffffd098f18
+  ptr_to_2nd = &heap.0x7ffffd098f1c
+  ptr_to_3rd = &heap.0x7ffffd098f20
+
+  #style:row highlight heap[2:6] heap[10:14]
+  #style:link { endSocket: right } main.*
+  #style { opacity: 0.75 } heap
+}
+```
+
+Commonly, we want to access the elements at different positions in an array. Using pointers, we could dereference, e.g. `*(arr + 1)`, to get the element at index `1`. This is a common enough operation that there exists a special syntax just for this purpose: `operator*`. For pointer types, `arr[i]` is exactly the same as `*(arr + i)`.
+
+```cpp
+int& elem1 = *(arr + 2);
+int& elem2 = arr[2];
+
+// The above two lines are exactly the same.
+// elem1 and elem2 refer to the same element!
+```
 
 ### Relationship to References
