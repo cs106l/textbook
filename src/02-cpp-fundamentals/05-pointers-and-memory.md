@@ -64,7 +64,11 @@ L2 {
 
 The stack is not in an inexhaustible resource[^1], and care must be taken to avoid nesting so many function calls that it runs out of space. For example, consider this buggy program intended to compute the factorial of a number:
 
-[^1]: TODO: resources regarding actual sizes of stack on various platforms
+[^1]: On most systems, the default size of the stack will range from 1-8 megabytes. On some embedded systems, the stack can be even more restricted, as small as a few kilobytes. On Unix machines (like Linux and MacOS), running
+      ```sh
+      ulimit -s 
+      ```
+      will print the size of the stack in kilobytes.
 
 ```cpp
 int main() {
@@ -122,7 +126,7 @@ Just like adding and removing from the top of a stack of plates is hassle-free, 
 * As discussed previously, the stack has a limited amount of space, so storing very large objects here (such as large arrays, lookup tables, etc.) is infeasible.
 * The lifetime of local variables is bound to the lifetime of their containing function. You cannot create a variable inside a stack frame that will outlive the invocation of its function, since everything in the stack frame will be deallocated when the function finishes execution.
 
-[^2]: TODO: Info about how this is not a fundamental requirement, was allowed in C, etc.
+[^2]: There is no reason why stack variables could not in theory have variably defined sizes, however, it does make the compiler implementer's life easier if they are. Local variables within a frame are usually defined by some offset from the top of the frame (called the frame pointer) whose address is `fp`, e,g, `fp + 0` might be the first variable, `fp + 4`, might be the second. If the size of all local variables are known at compile time, the generated machine code can refer to variables by some fixed offset from the current frame pointer. If they are dynamically sized, some extra math may be required to be performed at runtime to determine the offsets of these variables. As a real world example, consider that the C programming language originally allowed for [variadic-length arrays (VLAs)](https://en.wikipedia.org/wiki/Variable-length_array)&mdash;arrays allocated on the stack whose size could be determined at runtime. C++, which grew out of C, decided to remove this feature.
 
 To get around these limitations, we can make use of a different region of memory: the heap.
 
@@ -541,3 +545,50 @@ int& elem2 = arr[2];
 ```
 
 ### Relationship to References
+
+After learning about pointers, people often ask if they are related to references. The answer is yes! Under the hood, the compiler treats references just like pointers, however, the semantics differ. Pointers use `->` to access the underlying object, whereas references use the same `.` notation as value types:
+
+```cpp
+std::pair<double, double> p { 2.72, 3.14 };
+
+std::pair<double, double>* ptr = &p;
+std::pair<double, double>& ref = p;
+
+std::cout << ptr->first << "\n";
+std::cout << ref.first << "\n";
+```
+
+One important difference, however, is that references cannot be rebound. Once a references has been bound (points to) an object, it must always refer to that object.
+
+```cpp
+double pi = 3.14;
+double e = 2.72;
+
+// We can rebind pointers, changing what data they point to
+double* ptr = &pi;
+ptr = &e;
+
+// However, we cannot do the same with references
+double& ref = &pi;
+ref = e;  // This line changed *pi*, not ref!
+```
+
+Lastly, references are not allowed to be `nullptr`&mdash;they must always point to an object. There are hacky ways to get a reference to point to a `nullptr`[^4], but such programs, although they may compile, are invalid in C++.
+
+[^4]: We could technically write code like this to get a null reference:
+  
+      ```cpp
+      int& to_ref(int* pointer) {
+        return *pointer;
+      }
+
+      int main() {
+      ---
+      int& null_ref = to_ref(nullptr);
+      std::cout << null_ref << "\n";    // This line will crash!
+      ---
+      }
+      ```
+
+      However, any attempt at accessing `null_ref` (which would result in dereferencing the underlying pointer) would crash the program!
+
