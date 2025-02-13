@@ -573,7 +573,7 @@ double& ref = &pi;
 ref = e;  // This line changed *pi*, not ref!
 ```
 
-Lastly, references are not allowed to be `nullptr`&mdash;they must always point to an object. There are hacky ways to get a reference to point to a `nullptr`[^4], but such programs, although they may compile, are invalid in C++.
+Lastly, references are not allowed to be `nullptr`&mdash;they must always point to an object. There are hacky ways to get a reference to store `nullptr`[^4], but such programs, although they may compile, are invalid in C++ and may lead to undefined behaviour.
 
 [^4]: We could technically write code like this to get a null reference:
   
