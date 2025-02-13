@@ -321,7 +321,7 @@ L2 {
 }
 ```
 
-Every `T` also has a *pointer-to-const* type, `const T*` (also written `T const*`) which represents a pointer to a `const T`. We cannot change the object pointed to by this kind of pointer. However, we can change what the pointer itself points to. For example:
+Every `T` also has a *pointer-to-const* type, `const T*` (also written `T const*`) which represents a pointer to a `const T`. We cannot change the contents of the object pointed to by this kind of pointer. However, we can change what the pointer itself points to. For example:
 
 ```cpp
 int main() {
@@ -415,7 +415,7 @@ Once you have a `T*` to the heap, you can deference it, pass the pointer to othe
 delete ptr;
 ```
 
-which frees the memory pointed to by `ptr`. Calling `delete` on a pointer not previously returned by `new` is invalid, as is attempting to `delete` the same pointer twice. The one exception to this rule is `nullptr`: `delete`ing `nullptr` is always valid and does nothing. Failing to `delete` pointer that was allocated with `new` will not cause your program to crash, but will lead to a <abbr title="When dynamically allocated memory (via new) is not properly deallocated (delete), leading to wasted memory that remains inaccessible until the program terminates">**memory leak**</abbr>, causing your program to use more memory than it requires.
+which frees the memory pointed to by `ptr`. Calling `delete` on a pointer not previously returned by `new` is invalid, as is attempting to `delete` the same pointer twice. The one exception to this rule is `nullptr`: `delete`ing `nullptr` is always valid and does nothing. Failing to `delete` a pointer that was allocated with `new` will not cause your program to crash, but will lead to a <abbr title="When dynamically allocated memory (via new) is not properly deallocated (delete), leading to wasted memory that remains inaccessible until the program terminates">**memory leak**</abbr>, causing your program to use more memory than it requires.
 
 Often times, we don't want to allocate space for a single object, but for multiple objects at a time. C++ supports this through **array allocations** and `operator new[]`:
 
