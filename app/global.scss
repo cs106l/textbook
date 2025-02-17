@@ -31,3 +31,11 @@
   margin-left: -3px;
   margin-right: -3px;
 }
+
+.striped {
+  background: repeating-linear-gradient(45deg,
+      #7c7c7c45,
+      #7c7c7c45 3px,
+      #00000000 3px,
+      #00000000 6px);
+}
