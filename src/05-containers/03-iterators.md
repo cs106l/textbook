@@ -115,6 +115,8 @@ Iterators, on the other hand, all provide a simple set of operations to allow tr
 | `it == c.end()` | **Comparison:** `operator==` determines whether two iterators point to the same element. |
 | `*it` | **Indirection:** `operator*` returns a reference to the underlying element. Whether this reference can be read or written to depends on whether `it` is an input- or an output iterator (described below). |
 
+> Be careful not to increment an iterator past the end (e.g. `++c.end()`) or try to dereference the end iterator (`*c.end()`). Both of these are undefined behaviour in C++!
+
 Putting both the container and iterator interfaces together, try reasoning through what this code to iterate through a container is doing now:
 
 ```cpp
@@ -164,30 +166,125 @@ struct _unordered_map_iterator {
 };
 ```
 
-where `_unordered_map_iterator` is some internal, compiler-dependent type representing an iterator to an unordered map and which overloads all the necessary operations to meet the interface criteria for an iterator.
+where `_unordered_map_iterator` is some internal, compiler-dependent type representing an iterator to an unordered map and which overloads all the necessary operations to meet the interface criteria for an iterator. `_unordered_map_iterator` is just an example&mdash;the actual type used will depend on the compiler.
 
 ## Iterator Categories
 
 Not all iterators support the same set of operations. As a consequence of how their container is defined internally, some are more "powerful" than others. This is primarily a result of the restriction in the C++ Standard that all iterator methods be $O(1)$ in runtime complexity. For example, it is trivial to jump ahead by $n$ elements with a vector iterator in $O(1)$ time since a vector's memory is laid out sequentially, but not so straightforward to do so for an `std::unordered_map` whose elements are arranged in a distributed fashion. This gives rise to a variety of different **iterator categories**: each container's iterators fall into one of the following categories depending on what operations it supports.
 
+![A diagram showing the difference between iterator categories](/graphics/iterators-*.svg)
+
 ### Output
+
+An iterator is an **output iterator** if it supports overwriting the pointed to element via `operator=`, e.g.:
+
+```cpp
+*it = elem;
+```
+
+Some container iterators will not be output if modifying their element would require restructuring the container. For example, changing the key of an element in a `std::map` might change where that element lives in its binary-search tree, so `std::map<K, V>::iterator` is *not* output.
 
 ### Input
 
+An iterator is an **input iterator** if it supports reading the pointed to element, e.g.:
+
+```cpp
+auto elem = *it;
+```
+
+Almost all iterators are input iterators&mdash;in fact, all of the following iterator categories are specializations of input iterators.
+
 ### Forward
+
+Up to this point, we have not actually specified whether it is valid to make multiple passes over the iterators of a container. For example, given a range of elements between `begin` and `end` iterator, would it be valid to traverse these elements multiple times? 
+
+```cpp
+for (auto it = begin; it != end; ++it) {
+  std::cout << *it << " ";
+}
+
+std::cout << "\n\n";
+
+/* Are we allowed to run this for loop again with the same iterators? */
+for (auto it = begin; it != end; ++it) {
+  std::cout << *it << " ";
+}
+```
+
+**Forward iterators** guarantee that multiple passes are valid. Every STL container's iterators are forward&mdash;intuitively, this should make sense: simply iterating over a container's elements doesn't change them in a way that would prevent iterating again. Outside of the STL containers, however, this is not generally true[^2].
+
+[^2]: For example, consider `std::istream_iterator`, which allows us to iterate over the elements of an `istream`, as shown in the following example:
+
+      ```cpp
+      std::istringstream str("0.1 0.2 0.3 0.4");
+
+      auto begin = std::istream_iterator<double>(str);
+      auto end = std::istream_iterator<double>();
+
+      for (auto it = begin; begin != end; ++it) {
+        std::cout << *it << " ";
+      }
+      ```
+
+      The above code reads doubles from the underlying `str` stream. Each time the iterator `it` is advanced, a `double` value is read from `str` and stored into `it`. We should not expect that running this for loop again (starting at `begin`) would yield the same output, since the stream has been modified! Hence, `std::istream_iterator` is not a forward iterator.
+
+More formally, forward iterators must satisfy the *multi-pass guarantee*. That is, given iterators to a sequence `a` and `b`, it must hold that `++a == ++b`. In plain English, moving both iterators forward (in either order) should land them at the same element.
 
 ### Bidirectional
 
+**Bidirectional iterators** are a kind of forward iterator that can be moved backwards as well as forwards, e.g.
+
+```cpp
+--it;
+```
+
+A container's iterators will be bidirectional if they are sequential in memory (like a vector) or if they are sorted (like a `std::map`). Some containers have no easy way to go backwards from an iterator (or choose not provide this behaviour) like `std::unordered_map`.
+
+> Be careful not to decrement before the `begin` iterator! Writing `--c.begin()` is undefined behaviour, just like `++c.end()`.
+
 ### Random Access
 
+A **random-access iterator** is a bidirectional iterator that supports jumping forwards or backwards multiple elements at a time through the sequence. 
+
+```
+auto it = c.begin() + n;
+```
+
+Negative values will move the iterator backwards. These iterators closely resemble pointers in their syntax. For example, we can use `operator[]` to combine an increment/dereference together:
+
+```cpp
+std::vector<int> v { 1, 2, 3 };
+auto it = v.begin();
+auto elem = it[2];      // Same as *(it + 2)
+```
+
+Once again, be careful not to go out of bounds or dereference the `end` iterator!
+
 ### Contiguous
+
+**Contiguous iterators** are a subset of random-access iterators that further stipulate that their elements are stored contiguously in memory. For example, an `std::deque` is random-access, but not contiguous (recall its [implementation details](./sequence-containers#behind-the-scenes-1)).
+
+Functionally, there is not much difference between this iterator and the one before it. However, taking the address of the elements pointed to by these iterators (`&*it`) will reveal that they are stored contiguously in memory.
+
+## Iterator Invalidation
+
+What happens to an iterator if we modify its underlying container? Iterators, much like pointers, point to a fixed location in memory where their element is stored, plus some bookkeeping data to derive the location of the next element. As a result, operations which restructure a container may **invalidate** previously obtained iterators. This can lead to undefined behaviour if we are not careful.
+
+Here's a table sumarizing which operations will and will not invalidate iterators for the containers discussed in this textbook:
+
+| Method | Is Valid? | Precondition |
+|--------|-----------|-------|
+| **`std::vector`** | | |
+| `push_back` <br/> `insert` | ❌ | **`capacity()` changed.** If the vector had to reallocate its elements, then the elements will be copied over to a new buffer, invalidating all existing iterators. |
+| `push_back` <br/> `insert` | ❌ | **Iterators after modified element.** These iterators will be pushed forward by one, so they will no longer refer to the same elements. |
+| `push_back` <br/> `insert` | ✅ | **All other cases.** |
+| `pop_back` <br/> `erase` | ❌ | **Iterators after modified element.** These iterators will be pushed backwards by one, so they will no longer refer to the same elements. | 
+| `pop_back` <br/> `erase`  | ✅ | **All other cases.** |
 
 ## Iterator Flavors
 
 ### `const` Iterators
 
 ### Reverse Iterators
-
-## Iterator Invalidation
 
 ## Deep Dive: `std::deque::iterator`

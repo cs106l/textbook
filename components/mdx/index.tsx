@@ -10,7 +10,7 @@ import {
   Typography,
   TypographyProps,
 } from "@mui/material";
-import React from "react";
+import React, { JSX } from "react";
 
 import { MDXProvider } from "@mdx-js/react";
 import {
@@ -102,6 +102,15 @@ function ruleHeading(props?: TypographyProps) {
   });
 }
 
+function ImageBase(
+  props: React.DetailedHTMLProps<
+    React.ImgHTMLAttributes<HTMLImageElement>,
+    HTMLImageElement
+  >
+) {
+  return <img {...props} width="100%" />;
+}
+
 export const components: Readonly<MDXComponents> = {
   h1: ruleHeading({ variant: "h1" }),
   h2: ruleHeading({ variant: "h2" }),
@@ -135,6 +144,37 @@ export const components: Readonly<MDXComponents> = {
         {children}
         {fn && "]"}
       </Link>
+    );
+  },
+
+  img: (props) => {
+    const resolveSrc = (url?: string): string | undefined => {
+      if (!url) return url;
+      url = url.trim();
+      if (url.startsWith("http://") || url.startsWith("https://")) return url;
+      return (
+        (process.env.NEXT_PUBLIC_BASE_PATH ?? "") +
+        (url.startsWith("/") ? url : `/${url}`)
+      );
+    };
+
+    const src: string | undefined = props.src;
+    if (!src) return <ImageBase {...props} />;
+    const parts = src.includes("*")
+      ? [src.replaceAll("*", "light"), src.replaceAll("*", "dark")]
+      : [src];
+    if (parts.length === 1)
+      return <ImageBase {...props} src={resolveSrc(src)} />;
+
+    const light = resolveSrc(parts[0]);
+    const dark = resolveSrc(parts[1]);
+
+    return (
+      <>
+        {/* These classes are defined in global.scss */}
+        <ImageBase {...props} src={dark} className="dark-image" />
+        <ImageBase {...props} src={light} className="light-image" />
+      </>
     );
   },
 };
