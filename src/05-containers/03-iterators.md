@@ -272,14 +272,19 @@ What happens to an iterator if we modify its underlying container? Iterators, mu
 
 Here's a table sumarizing which operations will and will not invalidate iterators for the containers discussed in this textbook:
 
-| Method | Is Valid? | Precondition |
+| Method | Iterators Valid? | Precondition |
 |--------|-----------|-------|
 | **`std::vector`** | | |
-| `push_back` <br/> `insert` | ❌ | **`capacity()` changed.** If the vector had to reallocate its elements, then the elements will be copied over to a new buffer, invalidating all existing iterators. |
-| `push_back` <br/> `insert` | ❌ | **Iterators after modified element.** These iterators will be pushed forward by one, so they will no longer refer to the same elements. |
+| `push_back` <br/> `insert` | ❌ | **`capacity()` changed.** If the vector had to reallocate its internal buffer, then the elements will be copied over to a new buffer, invalidating all existing iterators. |
+| `push_back` <br/> `insert` | ❌ | **Iterators after modified element.** These iterators will be pushed forwards, so they will no longer refer to the same elements. |
 | `push_back` <br/> `insert` | ✅ | **All other cases.** |
-| `pop_back` <br/> `erase` | ❌ | **Iterators after modified element.** These iterators will be pushed backwards by one, so they will no longer refer to the same elements. | 
+| `pop_back` <br/> `erase` | ❌ | **Iterators after modified element.** These iterators will be pushed backwards, so they will no longer refer to the same elements. | 
 | `pop_back` <br/> `erase`  | ✅ | **All other cases.** |
+| **`std::deque`** | | |
+| `push_front` <br /> `push_back` <br /> `insert` | ❌ | |
+| `pop_front` <br /> `pop_back` | ❌ | **Iterators to front/back** |
+| `pop_front` <br /> `pop_back` | ✅ | **All other cases.** |
+| `erase` | ❌ | **If middle elements were erased.** |
 
 ## Iterator Flavors
 
