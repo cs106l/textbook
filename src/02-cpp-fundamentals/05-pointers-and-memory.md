@@ -256,7 +256,7 @@ For any type `T`, `T*` is the type of a pointer to an object of type `T`. Under 
 
 [^3]: In reality, 64-bit machines cannot address $2^{64}$ bytes of memory, even if there was a way to store that much space on device (at this point, there is not&mdash;$2^{64}\text{ bytes}\approx18\text{ exabytes}$, or about 18 billion gigabytes). 64-bit CPUs will typically only use some portion of the address bits (for example, Intel processors commonly use only the lower 48 bits for architectural reasons).
 
-Given a `T*` ptr, we can get the value of type `T` that it points to through the **indirection operator**, `*`. This is known as *dereferencing* a pointer. To be precise, `operator*`, returns a `T&`, or a reference to `T`. Why? This technicality means that dereferencing a pointer does not make any copies of the pointed-to object&mdash;it merely accesses its already-existing memory. Furthermore, it allows us to use the indirection operator to modify the underlying data, e.g.:
+Given a `T*` ptr, we can get the value of type `T` that it points to through the **indirection operator**, `operator*`. This is known as *dereferencing* a pointer. To be precise, `operator*`, returns a `T&`, or a reference to `T`. Why? This technicality means that dereferencing a pointer does not make any copies of the pointed-to object&mdash;it merely accesses its already-existing memory. Furthermore, it allows us to use the indirection operator to modify the underlying data, e.g.:
 
 ```cpp
 int main() {
@@ -463,12 +463,12 @@ delete[] ptr;
 
 ### Pointer Arithmetic
 
-Given an array pointer `T*`, how do we access the $i^\text{th}$ element? One way is using <abbr title="Allows performing operations like addition and subtraction on pointers, enabling traversal of arrays and dynamic memory by leveraging the underlying memory addresses">**pointer arithmetic**</abbr>, which makes use of two key facts:
+Given an array pointer `T*`, how do we access the $i^\text{th}$ element? One way is using <abbr title="Allows performing operations like addition and subtraction on pointers, enabling traversal of arrays and dynamic memory by leveraging the underlying memory addresses">**pointer arithmetic**</abbr>. Recall that:
 
 * Every type `T` has a fixed size at compile time.
 * Array allocations (returned by `new[]`) are contiguous in memory.
 
-The first fact enables the compiler to know precisely how many bytes to allocate to an array of `n` elements of type `T`&mdash;indeed, we can call `sizeof(T)` to get the compile-time size of `T`, so `n * sizeof(T)` is the *minimum* number of bytes a call to `new T[n]` must allocate. The second fact, in combination with the first, enables us to access individual elements in arrays. As the example below demonstrates, adding an integer to a pointer increments that pointers address *in multiples of `sizeof(T)`*:
+The first fact allows the compiler to know precisely how many bytes to allocate to an array of `n` elements of type `T`&mdash;indeed, we can call `sizeof(T)` to get the compile-time size of `T`, so `n * sizeof(T)` is the *minimum* number of bytes a call to `new T[n]` must allocate. The second fact, in combination with the first, lets us to know the addresses of individual elements in arrays. As the example below demonstrates, adding an integer to a pointer increments that pointers address *in multiples of `sizeof(T)`*:
 
 ```cpp
 int main() {
@@ -534,7 +534,7 @@ actual {
 }
 ```
 
-Commonly, we want to access the elements at different positions in an array. Using pointers, we could dereference, e.g. `*(arr + 1)`, to get the element at index `1`. This is a common enough operation that there exists a special syntax just for this purpose: `operator*`. For pointer types, `arr[i]` is exactly the same as `*(arr + i)`.
+We usually want to access the elements at different positions in an array. Using pointers, we could dereference, e.g. `*(arr + 1)`, to get the element at index `1`. This is a common enough operation that there exists a special syntax just for this purpose: `operator[]`. For pointer types, `arr[i]` is exactly the same as `*(arr + i)`.
 
 ```cpp
 int& elem1 = *(arr + 2);
