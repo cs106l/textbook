@@ -63,7 +63,6 @@ function heading(props?: TypographyProps) {
     sx: {
       ...props?.sx,
       position: "relative",
-      scrollMarginTop: "4rem",
       "& > a": {
         textDecoration: "none",
         color: "inherit",

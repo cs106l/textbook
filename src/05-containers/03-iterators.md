@@ -131,7 +131,7 @@ for (auto it = begin; begin != end; ++it) {
 }
 ```
 
-If you have read and are familiar with [the chapter on pointers](/cpp-fundamentals/pointers-and-memory), you might notice that semantics of iterators are very similar to that of pointers. Iterators, like pointers, can be dereferenced, incremented, compared, etc. In some sense, iterators are a generalization of pointers to memory that is not necessarily sequential. This allows more complex data types, such as `unordered_map`, to seem *as if* its elements were represented sequentially in memory.
+If you have read and are familiar with [the chapter on pointers](/cpp-fundamentals/pointers-and-memory), you might notice that semantics of iterators are very similar to that of pointers. Iterators, like pointers, can be dereferenced, incremented, compared, etc. In some sense, iterators are a generalization of pointers to memory that is not necessarily sequential. This allows more complex data types, such as `unordered_map`, to seem *as if* their elements are represented sequentially in memory.
 
 ### Iterator Types
 
@@ -184,6 +184,10 @@ An iterator is an **output iterator** if it supports overwriting the pointed to 
 
 Some container iterators will not be output if modifying their element would require restructuring the container. For example, changing the key of an element in a `std::map` might change where that element lives in its binary-search tree, so `std::map<K, V>::iterator` is *not* output.
 
+| Supported Operation | Description |
+|-----------------|-------------|
+| `*it = elem` | **Overwriting element:** `operator*` returns a reference whose value can be overwritten, changing the value of the element the iterator points to. |
+
 ### Input
 
 An iterator is an **input iterator** if it supports reading the pointed to element, e.g.:
@@ -192,7 +196,45 @@ An iterator is an **input iterator** if it supports reading the pointed to eleme
 auto elem = *it;
 ```
 
-Almost all iterators are input iterators&mdash;in fact, all of the following iterator categories are specializations of input iterators.
+Almost all iterators are input iterators[^3]&mdash;in fact, all of the following iterator categories are specializations of input iterators.
+
+| Supported Operation | Description |
+|-----------------|-------------|
+| `auto elem = *it` | **Reading element:** `operator*` returns a reference which represents the element pointed to by the iterator. |
+
+[^3]: One example of an iterator which is not an input iterator is [`std::ostream_iterator`](https://en.cppreference.com/w/cpp/iterator/ostream_iterator). This iterator represents a position inside an `std::ostream`, and allows inserting elements into an `ostream` (but not reading them). For example, the following code writes comma-separated `double` values to `std::out`:
+
+      ```cpp
+      std::ostream_iterator<double> it(std::cout, ", ");
+      *it = 3.14;
+      ++it;
+      *it = 1.62;
+      ++it;
+
+      // Output:
+      //  3.14, 1.62, 
+      ```
+
+      This code allows us to write to an `std::ostream` through an iterator interface. To do this, it employs some operator overloading trickery. For one, `operator*` returns a reference to the same iterator. That is, `operator*` is implemented as:
+
+      ```cpp
+      std::ostream_iterator& operator*() { return *this; }
+      ```
+
+      Meanwhile, `operator=` is overloaded to write elements to the underlying stream, e.g.
+
+      ```cpp
+      std::ostream_iterator& operator=(const T& value) {
+        *out_stream << value;
+        if (delim != 0)
+            *out_stream << delim;
+        return *this;
+      }
+      ```
+
+      where `std::ostream& out_stream` and `const char* delim` are private fields of the iterator, assigned on construction. Together, these overloads allow code like `*it = 3.14` to write to the underlying stream. Notice that *reading* the value of `*it` is meaningless&mdash;`std::ostream_iterator` is not an input iterator. `*it` is simply a reference to the same iterator and doesn't actually refer to any "element" in the stream.
+
+      This is also the way that the commonly used [`std::back_inserter`](https://en.cppreference.com/w/cpp/iterator/back_inserter), [`std::front_inserter`](https://en.cppreference.com/w/cpp/iterator/front_inserter) and [`std::inserter`](https://en.cppreference.com/w/cpp/iterator/inserter) work as well.
 
 ### Forward
 
@@ -228,7 +270,7 @@ for (auto it = begin; it != end; ++it) {
 
       The above code reads doubles from the underlying `str` stream. Each time the iterator `it` is advanced, a `double` value is read from `str` and stored into `it`. We should not expect that running this for loop again (starting at `begin`) would yield the same output, since the stream has been modified! Hence, `std::istream_iterator` is not a forward iterator.
 
-More formally, forward iterators must satisfy the *multi-pass guarantee*. That is, given iterators to a sequence `a` and `b`, it must hold that `++a == ++b`. In plain English, moving both iterators forward (in either order) should land them at the same element.
+More formally, forward iterators must satisfy the *multi-pass guarantee*. That is, given iterators `a` and `b` which point to the same element (`a == b`), it must hold that `++a == ++b`. In plain English, moving both iterators forward (in either order) should land them at the same element.
 
 ### Bidirectional
 
@@ -238,13 +280,17 @@ More formally, forward iterators must satisfy the *multi-pass guarantee*. That i
 --it;
 ```
 
-A container's iterators will be bidirectional if they are sequential in memory (like a vector) or if they are sorted (like a `std::map`). Some containers have no easy way to go backwards from an iterator (or choose not provide this behaviour) like `std::unordered_map`.
+A container's iterators will be bidirectional if there is some way to identify the previous element. This may be the case if the container is sequential (like a vector) or its elements are sorted (like a `std::map`). Some containers have no easy way to go backwards from an iterator (or choose not provide this behaviour) like `std::unordered_map`.
 
 > Be careful not to decrement before the `begin` iterator! Writing `--c.begin()` is undefined behaviour, just like `++c.end()`.
 
+| Supported Operation | Description |
+|-----------------|-------------|
+| `--it` **OR** `it--` | **Decrement:** `operator--` moves the iterator backwards to the previous element. |
+
 ### Random Access
 
-A **random-access iterator** is a bidirectional iterator that supports jumping forwards or backwards multiple elements at a time through the sequence. 
+A **random-access iterator** is a bidirectional iterator that supports jumping forwards or backwards multiple elements at a time. 
 
 ```
 auto it = c.begin() + n;
@@ -260,11 +306,19 @@ auto elem = it[2];      // Same as *(it + 2)
 
 Once again, be careful not to go out of bounds or dereference the `end` iterator!
 
+| Supported Operation | Description |
+|-----------------|-------------|
+| `it += n` | **Random Access:** If $n$ is positive, `operator+=` moves `it` forward `n` hops&mdash;this has the equivalent effect as calling `it++` $n$ times except the operation is done in constant time. For negative $n$, `operator+=` moves `it` backwards. |
+| `it -= n` | **Random Access:** Identical to `it += -n` |
+| `it + n` | **Random Access:** Creates a new iterator `n` hops forward |
+| `it - n` | **Random Access:** Creates a new iterator `n` hops backward |
+| `it1 < it2` <br /> `it1 <= it2` <br /> `it1 > it2` <br /> `it1 >= it2` | **Ordered Comparison:** Checks if `it1` comes before or after, respectively, `it2` in the sequence |
+
 ### Contiguous
 
 **Contiguous iterators** are a subset of random-access iterators that further stipulate that their elements are stored contiguously in memory. For example, an `std::deque` is random-access, but not contiguous (recall its [implementation details](./sequence-containers#behind-the-scenes-1)).
 
-Functionally, there is not much difference between this iterator and the one before it. However, taking the address of the elements pointed to by these iterators (`&*it`) will reveal that they are stored contiguously in memory.
+Functionally, there is not much difference between contiguous and random-access iterators. However, taking the address of the elements pointed to by these iterators (`&*it`) will reveal that they are stored contiguously in memory.
 
 ## Iterator Invalidation
 
@@ -272,23 +326,72 @@ What happens to an iterator if we modify its underlying container? Iterators, mu
 
 Here's a table sumarizing which operations will and will not invalidate iterators for the containers discussed in this textbook:
 
-| Method | Iterators Valid? | Precondition |
+| Method | Iterators Valid? | Precondition/Notes |
 |--------|-----------|-------|
-| **`std::vector`** | | |
-| `push_back` <br/> `insert` | ❌ | **`capacity()` changed.** If the vector had to reallocate its internal buffer, then the elements will be copied over to a new buffer, invalidating all existing iterators. |
-| `push_back` <br/> `insert` | ❌ | **Iterators after modified element.** These iterators will be pushed forwards, so they will no longer refer to the same elements. |
-| `push_back` <br/> `insert` | ✅ | **All other cases.** |
+| **`std::vector`** |||
+| `push_back` <br/> `insert` | ❌ | **`capacity()` changed** If the vector had to reallocate its internal buffer, then the elements will be copied over to a new buffer, invalidating all existing iterators. |
+| `push_back` <br/> `insert` | ❌ | **Iterators after modified element** These iterators will be pushed forwards, so they will no longer refer to the same elements. |
+| `push_back` <br/> `insert` | ✅ | **All other cases** |
 | `pop_back` <br/> `erase` | ❌ | **Iterators after modified element.** These iterators will be pushed backwards, so they will no longer refer to the same elements. | 
-| `pop_back` <br/> `erase`  | ✅ | **All other cases.** |
-| **`std::deque`** | | |
-| `push_front` <br /> `push_back` <br /> `insert` | ❌ | |
-| `pop_front` <br /> `pop_back` | ❌ | **Iterators to front/back** |
-| `pop_front` <br /> `pop_back` | ✅ | **All other cases.** |
-| `erase` | ❌ | **If middle elements were erased.** |
+| `pop_back` <br/> `erase`  | ✅ | **All other cases** |
+| **`std::deque`** |||
+| `push_front` <br /> `push_back` <br /> `insert` | ❌ | All iterators are invalidated |
+| `pop_front` <br /> `pop_back` | ❌ | **Iterators to front/back elements** |
+| `pop_front` <br /> `pop_back` | ✅ | **All other cases** |
+| `erase` | ❌ | **If middle elements were erased,** all iterators invalidated |
+| **`std::map`, `std::set`** |||
+| `insert` <br />  `operator[]` | ✅ | |
+| `erase` <br />  | ✅ | **Except for iterators to erased element** |
+| **`std::unordered_map`, `std::unordered_set`** |||
+| `insert` <br />  `operator[]` | ❌ | **Insertion caused rehash[^4]** |
+| `insert` <br />  `operator[]` | ✅ | |
+| `erase` <br />  | ✅ | **Except for iterators to erased element** |
+
+[^4]: This shows [another benefit](./associative-containers#which-should-i-use) to using `std::map` over `std::unordered_map` if iterators to elements are employed extensively: `std::map` has more stable iterators that are less likely to be invalidated.
 
 ## Iterator Flavors
 
+Occasionally, you will discover some variants of the above iterator concepts when working with C++ in practice. These iterator "flavors" allow us to handle `const` containers more appropriately, as well as work with bidirectional iterators in reverse order.
+
 ### `const` Iterators
+
+Given a `const` container, we would not want to allow elements of that container to be modified through their iterators. This is the idea of <abbr title="The principle that an object declared as const should not be allowed to be modified directly or indirectly through any part of its interface, ensuring logical and contractual immutability">const correctness</abbr>&mdash;objects that are marked `const` should not be allowed to be modified through any part of their interface.
+
+**`const` iterators** allow for container types to conform to this principle. A container type `C` with elements of type `T` will in practice have two iterator types:
+
+* **`C::iterator`** which points to elements of type `T` (e.g. `std::string::iterator` points to `char`)
+* **`C::const_iterator`** which points to elements of type `const T` (e.g. `std::string::const_iterator` points to `const char`)
+
+Namely, this means that you cannot modify the elements that a `const_iterator` points to. As a result, every `const_iterator` is necessarily not an output iterator, since you can't write to the underlying element (however, you can still have non-output containers which have a meaningful distinction between their `iterator` and `const_iterator` types![^5]).
+
+[^5]: As an example of this, consider `std::map::iterator`, which points to a `std::pair<const K, V>` representing a key-value pair in the map. This iterator is not output, since modifying the entire key-value pair might change the key, which would change where that entry is stored inside of the map (see the chapter on [associative containers](./associative-containers#behind-the-scenes) as to why)&mdash;this is precisely why the key is a `const K`. That said, we *can still modify the value* through a `std::map::iterator`. For example, the following code is valid:
+
+      ```cpp
+      std::map<std::string, size_t> m { { "Fabio", 10 }, { "Jacob", 4 } };
+
+      auto it = m.begin();    // Iterator to { "Fabio", 10 }
+      it->second = 106;       // Changes element to { "Fabio", 106 }
+      ```
+
+      Now consider what would happen if `it` was a `const_iterator`:
+
+      ```cpp
+      const std::map<std::string, size_t> m { { "Fabio", 10 }, { "Jacob", 4 } };
+
+      auto it = m.begin();    // std::map<std::string, size_t>::const_iterator
+      // it->second = 106;    // This line doesn't compile!
+      ```
+
+      In this updated example, `it` is a `const_iterator` since `m` is marked `const` (const-correctness). Since `it` is a `const_iterator`, the entire element is `const` and we cannot update the value of `"Fabio"` to `106` as we were able to before.
+
+Practically speaking, **`const_iterator` can be used anywhere an `iterator` for the same container was expected, so long as you do not require modification.** For example, iterator algorithms (discussed in the next chapter) which do not modify their range (e.g. [`std::count_if`](https://en.cppreference.com/w/cpp/algorithm/count) counts the number of elements between two iterators) will work just as well on `const_iterator`s as they do on regular `iterator`s. However, algorithms which do modify their range (e.g. [`std::sort`](https://en.cppreference.com/w/cpp/algorithm/sort) sorts the elements between two iterators in-place) will not compile for `const_iterator`.
+
+Given a `const` container `c`, calling `c.begin()` or `c.end()` will automatically return `const_iterator`s through the provided `const` overloads for these methods. However, if you require a `const` iterator for a non-`const` container, you can request these through the following convenience methods defined on every standard library container:
+
+| Container Method | Description |
+|--------|-------------|
+| [`std::cbegin(c)`](https://en.cppreference.com/w/cpp/iterator/begin) <br /> `c.cbegin()` | Gets a `const_iterator` to the first element of a container |
+| [`std::cend(c)`](https://en.cppreference.com/w/cpp/iterator/end) <br /> `c.cend()` | Gets a `const_iterator` to the **past-the-end** element of a container |
 
 ### Reverse Iterators
 

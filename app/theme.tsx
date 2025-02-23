@@ -111,6 +111,9 @@ const theme = createTheme({
           }),
           whiteSpace: "pre-wrap",
         },
+        "a > code": {
+          color: "unset"
+        },
         blockquote: {
           borderLeft: "3px solid var(--palette-divider)",
           margin: 0,
