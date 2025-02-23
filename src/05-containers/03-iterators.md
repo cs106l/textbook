@@ -395,4 +395,97 @@ Given a `const` container `c`, calling `c.begin()` or `c.end()` will automatical
 
 ### Reverse Iterators
 
+Bidirectional iterators provide an easy way for us to create a reverse ordering of the elements in a container. This is useful if we wanted to iterate through a container in reverse, or if we want to apply an iterator algorithm in reverse order (e.g. `std::find(c.begin(), c.end(), v)` searches for a value `v` starting from the left&mdash;what if we wanted to search from the right?). This is precisely what **reverse iterators** accomplish.
+
+Every container whose iterators are bidirectional provides a reverse iterator interface for iterating backwards through a sequence. These methods are analogous to their ordinary counterparts:
+
+| Container Method | Description |
+|--------|-------------|
+| [`std::rbegin(c)`](https://en.cppreference.com/w/cpp/iterator/rbegin) <br /> `c.rbegin()` | Gets an iterator to the first element in the container's *reversed* sequence. Dereferencing this iterator yields the last element in the container's ordinary (unreversed) sequence. |
+| [`std::rend(c)`](https://en.cppreference.com/w/cpp/iterator/rend) <br /> `c.rend()` | Gets an iterator to the **past-the-end** element in the container's *reversed* sequence. It is invalid to dereference this iterator&mdash;conceptually, it points to a non-existent element one before the first element in the container's ordinary (unreversed) sequence. |
+| [`std::crbegin(c)`](https://en.cppreference.com/w/cpp/iterator/rbegin) <br /> `c.crbegin()` | Returns the `const`-iterator version of `rbegin()` |
+| [`std::crend(c)`](https://en.cppreference.com/w/cpp/iterator/cend) <br /> `c.crend()` | Returns the `const`-iterator version of `rend()` |
+
+Reverse iterators can only exist for bidirectional iterators: behind the scenes, a reverse iterator stores a regular iterator and moving forward (`operator++`) on the reverse iterator decrements the stored iterator (`operator--`). Reverse iterators are implemented as a templated wrapper ([`std::reverse_iterator`](https://en.cppreference.com/w/cpp/iterator/reverse_iterator)) around a bidirectional iterator, so containers do not need to implement any additional functionality to achieve this result. In effect, a reverse iterator stores an iterator to the element one ahead its dereferenced value, as explained by the diagram below.
+
+```cpp
+std::vector<int> v { 1, 2, 3, 4, 5 };
+
+auto rbegin = v.rbegin();
+auto rend = v.rend();
+```
+
+```memory
+conceptual {
+  #label title ""
+  #label subtitle "Conceptually, we think of reverse iterators as pointing to elements in a *reversed* sequence, with semantics identical to ordinary iterators."
+
+  v = &data[1]
+  data => b" 12345"
+
+  rbegin = &data[5]
+  rend = &data[0]
+  
+  #style:link { endSocket: left } v
+  #style striped data[0]
+  #style:link { path: straight } v
+}
+
+actual {
+  #label title ""
+  #label subtitle "Behind the scenes, reverse iterators actually store an iterator that is *one ahead* (i.e. in the ordinary sequence) of where they conceptually point to."
+
+  v = &data[1]
+  data => b" 12345 "
+
+  rbegin = &data[6]
+  rend = &data[1]
+  
+  #style:link { endSocket: left } v
+  #style striped data[0] data[-1]
+  #style:link { path: straight } v
+  #style:link { dash: { animation: true } } rbegin rend
+}
+
+subtitle {
+  #label title ""
+  #label subtitle "The motivation behind this implementation detail is that a true \"before-the-start\" iterator (what `rend` represents) would be undefined behaviour in C++&mdash;recall that `--v.begin()` is not valid in C++."
+}
+```
+
+We can get the actual iterator a reverse iterator stores by calling the member function `base()` on it, e.g.
+
+```cpp
+std::vector<int> v { 1, 2, 3, 4, 5 };
+
+auto rb = v.rbegin();
+auto re = v.rend();
+
+auto rb_base = rb.base();
+auto re_base = re.base();
+```
+
+```memory
+#label title ""
+#label subtitle "Notice that `v.rbegin()` actually stores `v.end()` as its `base` iterator, while `v.rend()` stores `v.begin()`."
+
+v = &data[1]
+data => b" 12345 "
+
+rb = &data[5]
+re = &data[0]
+
+rb_base = &data[6]
+re_base = &data[1]
+
+#style:link { endSocket: left } v
+#style striped data[0] data[-1]
+#style:link { path: straight } v
+#style:link { opacity: 0.5 } rb_base re_base
+```
+
+Reverse iterators generally inherit the category of their underlying iterator (e.g. random access iterators are random access in reverse). The only exception to this is contiguous iterators&mdash;since the elements are ordered in reverse, they are no longer strictly contiguous as the addresses decrease instead of increase as you move forward in the reverse sequence, which is expected for an iterator to be contiguous.
+
 ## Deep Dive: `std::deque::iterator`
+
+In this section, we will see how an iterator might actually be implemented for a real STL container data structure&mdash;in this case, an `std::deque`.
