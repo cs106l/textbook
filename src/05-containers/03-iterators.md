@@ -488,4 +488,74 @@ Reverse iterators generally inherit the category of their underlying iterator (e
 
 ## Deep Dive: `std::deque::iterator`
 
-In this section, we will see how an iterator might actually be implemented for a real STL container data structure&mdash;in this case, an `std::deque`.
+In this section, we will see how an iterator might actually be implemented for a real STL container data structure&mdash;in this case, an `std::deque`.  Compilers are free to implement this iterator however they choose, so long as the iteration operators are constant time and respect the [invalidation rules](#iterator-invalidation) above. In this section, our implementation will roughly mirror the `g++` compiler's implementation, whose source code can be found [here](https://github.com/gcc-mirror/gcc/blob/master/libstdc++-v3/include/bits/stl_deque.h), with a few simplifications. `std::deque<T>::iterator` is a random-access iterator, but for brevity, we will only implement the bidirectional iterator operations, namely `operator*`, `operator++`, and `operator--`. The remaining random-access operations are left as an exercise to the reader. 
+
+Recall from the chapter on sequence containers that a deque organizes its elements as an array of fixed-sized blocks of elements:
+
+```cpp
+std::deque<int> d { 4, 5, 6, 7, 8, 9 };
+```
+
+```memory
+diagram {
+  #label title ""
+  d = "deque<int>" { start: &b0[1], finish: &b1[3], blocks: &blocks, capacity: 2 }
+  blocks => "blocks" [ 0: &b0, 1: &b1 ]
+  b0 ==> b"_456"
+  b1 ==> b"789_"
+
+  #style:link { endSocket: top } d.start
+  #style:link { opacity: 0.5, dash: true } d.start d.finish
+}
+
+caption {
+  #label title ""
+  #label subtitle "Contrary to what was presented in the sequence containers chapter, `start` and `finish` are actually *iterators* to the elements, not mere indexes. These are represented here in the diagram above as dashed arrows. The implementation of these iterators is what will be discussed in the following section. Notice that `finish` is a *past-the-end* iterator."
+}
+```
+
+As a result, we can imagine that a `std::deque`, behind the scenes, might look something like this:
+
+```cpp
+#define BLOCK_SIZE 4
+
+template <typename T>
+struct _deque_iterator {
+  // TODO: Implementation of a deque iterator
+};
+
+template <typename T>
+class std::deque<T> {
+public:
+  using iterator = _deque_iterator<T>;
+  using const_iterator = _deque_iterator<const T>;
+
+  iterator begin() { return start; }
+  iterator end() { return finish; }
+
+  const_iterator begin() const { return start; }
+  const_iterator end() const { return finish; }
+
+  auto rbegin() { return std::make_reverse_iterator(end()); }
+  auto rend() { return std::make_reverse_iterator(begin()); }
+
+  auto rbegin() const { return std::make_reverse_iterator(end()); }
+  auto rend() const { return std::make_reverse_iterator(begin()); }
+
+  /* Remaining operations of a deque: constructor, push_front, push_back, etc. */
+
+private:
+  iterator start, finish;   // begin and end iterators
+  T** blocks;               // array of fixed-size block pointers
+  size_t capacity;          // allocated size of blocks array
+};
+```
+
+`_deque_iterator` is the name of the iterator type for a deque which we will implement. Before we do so, take note of a few details:
+
+* `iterator` and `const_iterator` are type aliases for an underlying `_deque_iterator` to a `T` or `const T`, respectively.
+* `BLOCK_SIZE` is the fixed size of the individual blocks. In actual practice, `g++`'s definition of this value is a bit more involved, with the actual size depending on the type `T`.
+* `begin()` and `end()` have `const` overloads. This will pose a problem for the const-versions of these methods, since `_deque_iterator<T>` cannot be converted to `_deque_iterator<const T>` by default. As a result, we will need to make sure our `_deque_iterator` provides a constructor for converting between these as a result.
+* `rbegin()` and `rend()` (and their `const` overloads) call [`std::make_reverse_iterator`](https://en.cppreference.com/w/cpp/iterator/make_reverse_iterator), which given a bidirectional iterator, produces a new iterator to the reversed range. We use `auto` to let the compiler deduce the return type, which will be `std::reverse_iterator<iterator>` (or `std::reverse_iterator<iterator>` for the `const` versions).
+
+So what goes into implementing a `_deque_iterator`? For starters, we must decide what data the iterator needs to track in order to increment and decrement the iterator. This poses an interesting challenge: if an iterator points to the end of one block, `operator++` needs to somehow know to move on to the start of the next block. `operator--` must likewise reposition iterators to the final element of the previous block. To solve this, compilers typically keep track of four pointers: the element the iterator points to, the element's block, and the first and last element in that block.
