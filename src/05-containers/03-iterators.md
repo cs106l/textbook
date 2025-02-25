@@ -133,6 +133,35 @@ for (auto it = begin; begin != end; ++it) {
 
 If you have read and are familiar with [the chapter on pointers](/cpp-fundamentals/pointers-and-memory), you might notice that semantics of iterators are very similar to that of pointers. Iterators, like pointers, can be dereferenced, incremented, compared, etc. In some sense, iterators are a generalization of pointers to memory that is not necessarily sequential. This allows more complex data types, such as `unordered_map`, to seem *as if* their elements are represented sequentially in memory.
 
+> **Note:** You may notice in this chapter that we use `++it` instead of `it++` when incrementing iterators. To see why, it can help to look at the call signatures of these two versions and how they differ:
+>
+> ```cpp
+> /** The prefix form, e.g. ++it */
+> Iterator& operator++() {
+>   /*
+>    * Code that moves this iterator to the next element
+>    */
+>   return *this;
+> }
+>
+> /** The postfix form, e.g. it++
+>  *
+>  * Note the `int` in the signature exists only to differentiate
+>  * from the above method. 
+>  */
+> Iterator operator++(int) {
+>   Iterator prev = *this;    // Save a copy the iterator's current state
+>   ++*this;                  // Move the iterator forward using the prefix form above
+>   return prev;              // Return the **old** state!
+> }
+> ``` 
+>
+> In particular, the prefix form (`++it`) updates an iterator in-place, returning a reference to the same iterator. The postfix form (`it++`) still updates the iterator, but **returns a copy of the old value of the iterator before it was incremented.** For this reason, `it++` can be a bit slower than `++it` because an extra copy is created[^6].
+
+[^6]: In actual practice, the extra copy created by `it++` may be optimized out by the compiler if it is not used, so these two versions may end up exhibiting the same performance after all optimizations are applied. We encourage you to check out [this FAQ post](https://isocpp.org/wiki/faq/operator-overloading#increment-pre-post-speed) on the isocpp site (co-authored by the original creator of C++) which states:
+
+      > So if you’re writing `i++` as a statement rather than as part of a larger expression, why not just write `++i` instead? You never lose anything, and you sometimes gain something.
+
 ### Iterator Types
 
 So far, we have used `auto` to let the compiler deduce the type of, for example, `c.begin()`. What actually is the type of an iterator? This will depend on the container, but generally speaking, given a container type `C`, its iterator type will be `C::iterator`. For example, `std::string::iterator` and `std::unordered_map<std:string, double>::iterator` are both iterator types.
@@ -564,20 +593,46 @@ So what goes into implementing `_deque_iterator`? For starters, we must decide w
 ```cpp
 template <typename T>
 class _deque_iterator {
+private:
+  T** block;
+  T*  current;
+  T*  first;
+  T*  last;
+
 public:
+
+  /** Increments an iterator with prefix notation, e.g. ++it */
+  _deque_iterator& operator++();
+
+  /** Decrements an iterator with prefix notation, e.g. --it */
+  _deque_iterator& operator--();
 
   /** Allows dereferencing the iterator, e.g. *it */
   T* operator->() const { return current; }
 
-  /** Allows using the arrow operator for object elements, e.g. it->member */
+  /** Allows using the arrow operator for compound T, e.g. it->member */
   T& operator*() const { return *current; }
 
-  _deque_iterator& operator++();
-  
+  /** Increments an iterator with postfix notation, e.g. it++ */
+  _deque_iterator operator++(int) {
+    _deque_iterator prev = *this;
+    ++*this;
+    return prev;
+  }
+
+  /** Increments an iterator with postfix notation, e.g. it-- */
+  _deque_iterator operator--(int) {
+    _deque_iterator prev = *this;
+    --*this;
+    return prev;
+  }
+
 
   /**
    * Constructs a _deque_iterator from an element pointer and the pointer to its block pointer.
    * Sets the first and last pointers using BLOCK_SIZE accordingly.
+   *
+   * std::deque will call this constructor internally to create iterators (not shown).
    */
   _deque_iterator(T* current, T** block)
     : block(block), current(current), first(*block), last(*block + BLOCK_SIZE)
@@ -594,11 +649,43 @@ public:
   _deque_iterator(const _deque_iterator<V>& it)
     : block(it.block), current(it.current), first(it.first), last(it.last)
     { }
-
-private:
-  T** block;
-  T*  current;
-  T*  first;
-  T*  last;
 };
 ```
+
+In the above implementation, our `_deque_iterator` class has the four pointers as described, with a constructor that initializes them and a copy constructor that will handle conversion from an `iterator` to a `const_iterator` (both constructors are constant-time, as required). We have hidden the implementation of the core iterator operators&mdash;the prefix `operator++()` and `operator--()`&mdash;which we will cover shortly. Notice that the postfix forms&mdash;`operator++(int)` and `operator--(int)`&mdash;are implemented in terms of their prefix equivalents.
+
+To implement `operator++`, we will attempt to move the `current` pointer to the next contiguous element within its block. If this increment would cause `current` to exceed its block, we will reposition it to the next block pointer, setting `first` and `last` accordingly. This could be implemented as:
+
+```cpp
+_deque_iterator& operator++() {
+  ++current;                    // Attempt to move current forward
+  if (current == last)          // Check OOB (assume last is past-the-end of the block)
+  {
+    ++block;                    // Move to next block
+    first = *block;             // Get first element of block
+    last  = first + BLOCK_SIZE; // Get last element of block
+    current = first;            // Reposition current
+  }
+  return *this;
+}
+```
+
+Notice that while the individual blocks of a deque are not all contiguous in memory, **the `blocks` array which contains all the pointers-to-blocks is itself contiguous!** This allows us to write `++block` in the above implementation. Also notice that `operator++` is constant-time, as required.
+
+Implementing `operator--` will take a similar approach:
+
+```cpp
+_deque_iterator& operator--() {
+  --current;                    // Attempt to move current backwards
+  if (current < first)          // Check OOB (first is in-bounds)
+  {
+    --block;                    // Move to previous block
+    first = *block;             // Get first element of block
+    last  = first + BLOCK_SIZE; // Get last element of block
+    current = last - 1;         // Reposition current
+  }
+  return *this;
+}
+```
+
+Voila! Putting everything together, we have built a bidirectional deque iterator. To complete it, we would need to add the random-access operators, in particular `operator+=` and `operator-=`. One approach might be to call `operator++` and `operator--` above `n` times, except that this would violate the restriction that iterator operations are constant-time. Instead, the actual random-access operators will precompute how many blocks they need to skip, and skip them in one fell swoop (e.g. using code like `blocks += block_offset`). We will not implement this here, but we encourage you to consider how you might implement it yourself or take a look at the `g++` source for these methods.
