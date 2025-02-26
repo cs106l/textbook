@@ -7,7 +7,7 @@ description: The introduction to the course reader!
 
 # Introduction
 
-Welcome to the **Stanford CS106L textbook**! The goal of this textbook is to familarize you with the fundamentals of the C++ langauge as well as the primary components of the Standard Template Library (STL). This resource is organized with inspiration from Stanford's CS106L: Standard C++ Programming course. However, this book can be used without reference to any of CS106L's course materials, although completing the assignments may reinforce topics the material covered in this textbook.
+Welcome to the **Stanford CS106L textbook**! The goal of this textbook is to familiarize you with the fundamentals of the C++ language as well as the primary components of the Standard Template Library (STL). This resource is organized with inspiration from Stanford's CS106L: Standard C++ Programming course. However, this book can be used without reference to any of CS106L's course materials, although completing the assignments may reinforce topics the material covered in this textbook.
 
 ## Who You Are
 
