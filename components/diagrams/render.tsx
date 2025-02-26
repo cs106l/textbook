@@ -113,7 +113,11 @@ function SubdiagramView({ diagram }: { diagram: MemorySubDiagram }) {
   const subdiagramRef = React.useRef<HTMLDivElement | null>(null);
   return (
     <DiagramContext.Provider value={{ ...context, subdiagramRef }}>
-      <Box className="memory-step" width={diagram.wide ? 1 : undefined} maxWidth={1}>
+      <Box
+        className="memory-step"
+        width={diagram.wide ? 1 : undefined}
+        maxWidth={1}
+      >
         <SubdiagramTextView text={diagram.text} />
         <Box
           display="flex"
@@ -300,6 +304,33 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
   const src = React.useRef<HTMLElement | null>(null);
   const theme = useTheme();
 
+  const getLineColor = React.useCallback(() => {
+    let rawColor = value.style?.link?.color ?? theme.palette.text.primary;
+    rawColor = rawColor.toString(); // Just in case, handle non-string input
+    rawColor = rawColor.trim();
+
+    const opacity = value.style?.link?.opacity;
+    if (!opacity) return rawColor;
+
+    // Try to apply MUI alpha, which generally can't handle
+    // CSS variables, color names like "red", etc.
+    try {
+      return alpha(rawColor, opacity);
+    } catch {}
+
+    // Query the document for the inferred CSS style
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+
+    try {
+      element.style.color = rawColor;
+      const color = getComputedStyle(element).color;
+      return alpha(color, opacity);
+    } finally {
+      document.body.removeChild(element);
+    }
+  }, [value.style, theme]);
+
   // Unfortunately, attempting to straightforwardly import leader-line-new causes issues with Next.js prerendering
   // so we dynamically import the library here!
   const [LL, setLL] = React.useState<typeof LeaderLine | null>(null);
@@ -324,12 +355,11 @@ function PointerValueView({ value, path }: ValueProps<"pointer">) {
     );
     if (!src.current || !dst) return;
 
-    const { opacity = 1, color, ...lineOptions } = value.style?.link ?? {};
-    const lineColor = alpha(color ?? theme.palette.text.primary, opacity);
+    const { opacity: _, color: __, ...lineOptions } = value.style?.link ?? {};
 
     const options: LeaderLine.Options = merge(
       {
-        color: lineColor,
+        color: getLineColor(),
         size: 1,
         endPlugSize: 2,
         startSocket: getSocket(src.current),

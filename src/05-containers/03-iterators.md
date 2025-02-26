@@ -53,7 +53,7 @@ for (size_t i = 0; i < strings.size(); i++) {
 
 This code uses an index `i` to keep track of which element the for loop is currently at. You have likely seen this code many times before, or something like it. Once `i` is no longer a valid index, we stop looping&mdash;otherwise, we increment `i` at the end of every iteration.
 
-What if we wanted to apply the same kind of loop to an `std::set`? Recall from the previous chapter that unlike `std::vector`, `std::set` does not store its elements sequentially in memory. We cannot use an integer index to get an element from a set, since it also has no `operator[]`. What we'd like is some kind of construct that allows us to keep track of where we are in a container while iterating, but which can handle more powerful data structures than `std::vector`.
+What if we wanted to apply the same kind of loop to an `std::set`? Recall from the previous chapter that unlike `std::vector`, `std::set` does not store its elements sequentially in memory. We also cannot use an integer index to get an element from a set, since it has no `operator[]`. What we'd like is some kind of construct that allows us to keep track of where we are in a container while iterating, but which can handle more powerful data structures than `std::vector`.
 
 ### Container Interface
 
@@ -358,8 +358,8 @@ Here's a table sumarizing which operations will and will not invalidate iterator
 | Method | Iterators Valid? | Precondition/Notes |
 |--------|-----------|-------|
 | **`std::vector`** |||
-| `push_back` <br/> `insert` | ❌ | **`capacity()` changed** If the vector had to reallocate its internal buffer, then the elements will be copied over to a new buffer, invalidating all existing iterators. |
-| `push_back` <br/> `insert` | ❌ | **Iterators after modified element** These iterators will be pushed forwards, so they will no longer refer to the same elements. |
+| `push_back` <br/> `insert` | ❌ | **`capacity()` changed.** If the vector had to reallocate its internal buffer, then the elements will be copied over to a new buffer, invalidating all existing iterators. |
+| `push_back` <br/> `insert` | ❌ | **Iterators after modified element.** These iterators will be pushed forwards, so they will no longer refer to the same elements. |
 | `push_back` <br/> `insert` | ✅ | **All other cases** |
 | `pop_back` <br/> `erase` | ❌ | **Iterators after modified element.** These iterators will be pushed backwards, so they will no longer refer to the same elements. | 
 | `pop_back` <br/> `erase`  | ✅ | **All other cases** |
@@ -367,7 +367,7 @@ Here's a table sumarizing which operations will and will not invalidate iterator
 | `push_front` <br /> `push_back` <br /> `insert` | ❌ | All iterators are invalidated |
 | `pop_front` <br /> `pop_back` | ❌ | **Iterators to front/back elements** |
 | `pop_front` <br /> `pop_back` | ✅ | **All other cases** |
-| `erase` | ❌ | **If middle elements were erased,** all iterators invalidated |
+| `erase` | ❌ | **If middle elements were erased,** all iterators are invalidated |
 | **`std::map`, `std::set`** |||
 | `insert` <br />  `operator[]` | ✅ | |
 | `erase` <br />  | ✅ | **Except for iterators to erased element** |
@@ -448,6 +448,7 @@ auto rend = v.rend();
 conceptual {
   #label title ""
   #label subtitle "Conceptually, we think of reverse iterators as pointing to elements in a *reversed* sequence, with semantics identical to ordinary iterators."
+  #label heap "Elements"
 
   v = &data[1]
   data => b" 12345"
@@ -463,6 +464,7 @@ conceptual {
 actual {
   #label title ""
   #label subtitle "Behind the scenes, reverse iterators actually store an iterator that is *one ahead* (i.e. in the ordinary sequence) of where they conceptually point to."
+  #label heap "Elements"
 
   v = &data[1]
   data => b" 12345 "
@@ -497,6 +499,7 @@ auto re_base = re.base();
 ```memory
 #label title ""
 #label subtitle "Notice that `v.rbegin()` actually stores `v.end()` as its `base` iterator, while `v.rend()` stores `v.begin()`."
+#label heap "Elements"
 
 v = &data[1]
 data => b" 12345 "
@@ -513,7 +516,7 @@ re_base = &data[1]
 #style:link { opacity: 0.5 } rb_base re_base
 ```
 
-Reverse iterators generally inherit the category of their underlying iterator (e.g. random access iterators are random access in reverse). The only exception to this is contiguous iterators&mdash;since the elements are ordered in reverse, they are no longer strictly contiguous as the addresses decrease instead of increase as you move forward in the reverse sequence, which is expected for an iterator to be contiguous.
+Reverse iterators generally inherit the category of their underlying iterator (e.g. random access iterators are random access in reverse). The only exception to this is contiguous iterators&mdash;since the elements are ordered in reverse, they are no longer strictly contiguous as the addresses decrease instead of increase as you move forward in the reverse sequence.
 
 ## Deep Dive: `std::deque::iterator`
 
@@ -600,7 +603,6 @@ private:
   T*  last;
 
 public:
-
   /** Increments an iterator with prefix notation, e.g. ++it */
   _deque_iterator& operator++();
 
@@ -652,6 +654,27 @@ public:
 };
 ```
 
+```memory
+#label title ""
+#label subtitle "Below is an example of what the `d.begin()` iterator might look like for the deque shown [at the beginning](#deep-dive-stddequeiterator) of this section. The animated arrow is the actual pointer to the element in the deque that the iterator points to."
+
+d = "deque<int>" { blocks: &blocks, capacity: 2 }
+blocks => "blocks" [ 0: &b0, 1: &b1 ]
+b0 ==> b"_456"
+b1 ==> b"789_"
+
+begin("d.begin()") = "_deque_iterator" {
+  block: &blocks.0,
+  current: &b0[1], 
+  first: &b0[0],
+  last: &b0[3]
+}
+
+#style:link { endSocket: left } begin.block
+#style:link { opacity: 0.5, dash: true } blocks.* d.*
+#style:link { dash: { animation: true } } begin.current
+```
+
 In the above implementation, our `_deque_iterator` class has the four pointers as described, with a constructor that initializes them and a copy constructor that will handle conversion from an `iterator` to a `const_iterator` (both constructors are constant-time, as required). We have hidden the implementation of the core iterator operators&mdash;the prefix `operator++()` and `operator--()`&mdash;which we will cover shortly. Notice that the postfix forms&mdash;`operator++(int)` and `operator--(int)`&mdash;are implemented in terms of their prefix equivalents.
 
 To implement `operator++`, we will attempt to move the `current` pointer to the next contiguous element within its block. If this increment would cause `current` to exceed its block, we will reposition it to the next block pointer, setting `first` and `last` accordingly. This could be implemented as:
@@ -688,4 +711,4 @@ _deque_iterator& operator--() {
 }
 ```
 
-Voila! Putting everything together, we have built a bidirectional deque iterator. To complete it, we would need to add the random-access operators, in particular `operator+=` and `operator-=`. One approach might be to call `operator++` and `operator--` above `n` times, except that this would violate the restriction that iterator operations are constant-time. Instead, the actual random-access operators will precompute how many blocks they need to skip, and skip them in one fell swoop (e.g. using code like `blocks += block_offset`). We will not implement this here, but we encourage you to consider how you might implement it yourself or take a look at the `g++` source for these methods.
+Voila! Putting everything together, we have built a bidirectional deque iterator. To complete it, we would need to add the random-access operators, in particular `operator+=` and `operator-=`. One approach might be to call `operator++` and `operator--` above `n` times, except that this would violate the restriction that iterator operations are constant-time. Instead, the actual random-access operators will precompute how many blocks they need to skip, and skip them in one fell swoop (e.g. `blocks += block_offset`). We will not implement this here, but we encourage you to consider how you might implement it yourself or take a look at the `g++` source for these methods.

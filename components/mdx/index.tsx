@@ -10,7 +10,7 @@ import {
   Typography,
   TypographyProps,
 } from "@mui/material";
-import React, { JSX } from "react";
+import React from "react";
 
 import { MDXProvider } from "@mdx-js/react";
 import {
@@ -107,6 +107,7 @@ function ImageBase(
     HTMLImageElement
   >
 ) {
+  // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
   return <img {...props} width="100%" />;
 }
 
