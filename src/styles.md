@@ -382,3 +382,9 @@ Use the label directive to custom diagram labels. All of the labels support mult
 ```
 
 Use an empty string to hide that label.
+
+## Images
+
+The `![alt text](url)` syntax can be used to show images. Placing a `*` in the `url` will expand to `light` or `dark`, depending on the current theme.
+
+![An image that switches between light and dark mode](/graphics/iterators-*.svg)
