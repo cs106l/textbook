@@ -211,7 +211,7 @@ int main() {
 }
 ```
 
-All arguments to `squareN` are copies, therefore the `N` in the calling function will be unaffected. This is called Pass-by-Reference.
+All arguments to `squareN` are copies, therefore the `N` in the calling function will be unaffected. This is called Pass-by-Value.
 
 ### Pass-by-Reference
 
