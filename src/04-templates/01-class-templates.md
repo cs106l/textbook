@@ -16,7 +16,7 @@ public:
 };
 ```
 
-Your company quickly realizes that you'd like to keep track of other data types as well, for example `double` and `std::string`. One approach is to just write more data types:
+Your company quickly realizes that you'd like to keep track of other data types as well, for example `double` and `std::string`. One approach is to just create more data types:
 
 ```cpp
 class double_vector { /* ... */ };
@@ -27,7 +27,7 @@ This approach suffers from two problems. On the one hand, there is a lot of redu
 
 **Templates** offer a solution to this problem. We'll declare a template for our class using one or more <abbr title="A variable inside of a template which will be filled in with a specific type/value at compile time when the template is instantiated">*template parameters*</abbr> which get replaced with a specific type when we use the template.
 
-## Template Basics
+## Declaring a template
 
 We can merge our `int_vector`, `double_vector`, `string_vector` into a single `vector` class template like so:
 
@@ -35,7 +35,7 @@ We can merge our `int_vector`, `double_vector`, `string_vector` into a single `v
 template <typename T>
 class vector {
 public:
-  void push_back(const T& i);
+  void push_back(const T& v);
   size_t size() const;
   T& operator[](size_t index) const;
 
@@ -65,13 +65,131 @@ Another consequence of instantiation is that we can expect a program that uses t
 
 [^1]: For example, imagine a template which when instantiated, produces another template instantiation. This kind of recursive template instantiation is what distinguishes templates from simple macros and is a hallmark of the technique called *template metaprogramming*.
 
+## Implementing a template
+
+The `vector` template above declares three methods: `push_back`, `size`, and `operator[]`. Where do we place the definitions for these methods?
+
+If you have read the previous section on classes, your first instinct might be to create a `vector.cpp` file like this:
+
+```cpp
+// vector.cpp
+
+template <typename T>
+void vector<T>::push_back(const T& v) { /* ... */ }
+
+template <typename T>
+size_t vector<T>::size() const { /* ... */ }
+
+template <typename T>
+T& vector<T>::operator[](size_t index) const { /* ... */ }
+```
+
+<sup>Notice that we must repeat the `template <typename T>` and `vector<T>` syntax in the definitions of the class template's member functions!</sup>
+
+As discussed previously, placing the definitions into a `.cpp` file like this improves compilation times. When the compiler is compiling another file that wants to use `vector`, they need only include `vector.h`&mdash;they don't also need to compile `vector.cpp`. This is known as <abbr title="The process of compiling source files independently from one another, enabling faster compilation">separate compilation</abbr>. Unfortunately for us, **templates cannot be separately compiled: we cannot easily split their code between a `.h` and `.cpp` file.**
+
+To see why, suppose that a compiler tried to compile `vector.cpp` above using separate compilation. The compiler must decide for which types `T` it must generate code for. Presumably, if another file calls `push_back` on a `vector<int>`, we'd want to generate a definition for `vector<int>::push_back`, or if another file gets the size of a `vector<std::string>`, we'd need a `vector<std::string>::size` definition. However, looking at `vector.cpp` alone, the compiler cannot deduce which `T` are used: to do so, it would need to scan over the rest of the source files, compile them, and then examine every instantation of `vector<T>`. This problem poses a challenge to compiler designers and defeats the purpose of separate compilation.
+
+To get around this, the compiler must see the entire template when it is included. In other words, including `vector.h` should also include its definitions so that the including file (which knows the choice of `T` used) can compile them. For this reason, class templates are usually distributed as header-only libraries: they implement the template entirely within one file. Taking the `vector<T>` template above as an example, here are three ways we might implement a template:
+
+1. **Write the definitions inline in the `.h` file.**
+
+    ```cpp
+    // vector.h
+
+    template <typename T>
+    class vector {
+    public:
+      void push_back(const T& v) `[{ /* ... */ }]`
+      size_t size() const `[{ /* ... */ }]`
+      T& operator[](size_t index) const `[{ /* ... */ }]`
+
+      /* Other methods and implementation hidden */
+    };
+    ```
+
+2. **Write the definitions below the declaration.**
+
+    ```cpp
+    // vector.h
+    
+    template <typename T>
+    class vector {
+    public:
+      void push_back(const T& v);
+      size_t size() const;
+      T& operator[](size_t index) const;
+
+      /* Other methods and implementation hidden */
+    };
+
+    `[template <typename T>
+    void vector<T>::push_back(const T& v) { /* ... */ }
+
+    template <typename T>
+    size_t vector<T>::size() const { /* ... */ }
+
+    template <typename T>
+    T& vector<T>::operator[](size_t index) const { /* ... */ }]`
+    ```
+
+3. **Include a `.cpp` file from the `.h` file.** This is the opposite of what you would normally do! 
+
+    ```cpp
+    // vector.h
+    
+    template <typename T>
+    class vector {
+    public:
+      void push_back(const T& v);
+      size_t size() const;
+      T& operator[](size_t index) const;
+
+      /* Other methods and implementation hidden */
+    };
+
+    `[#include "vector.cpp"]`
+    ```
+
+    ```cpp
+    // vector.cpp
+
+    `[template <typename T>
+    void vector<T>::push_back(const T& v) { /* ... */ }
+
+    template <typename T>
+    size_t vector<T>::size() const { /* ... */ }
+
+    template <typename T>
+    T& vector<T>::operator[](size_t index) const { /* ... */ }]`
+    ```
+
+One problem with these approaches is that they may end up inadvertently increasing compilation times, since every file that includes `vector.h` will end up separately compiling the same definitions. This is usually not a concern in practice, and most template libraries, for example the G++ compiler's implementation of the standard template library headers like `<vector>` and `<map>`, use header-only libraries[^2].
+
+[^2]: TODO: Link to G++ source files
+
+There is a fourth, less-commonly used way to get around this problem and still enjoy the benefits of separate compilation. We could separate the `.h` and `.cpp` file as we would normally do for a class, and **explicitly instantiate the template in advance in the `.cpp` file.** For instance:
+
+<sup>TODO: check that this is correct</sup>
+
+```cpp
+// vector.cpp
+
+#include "vector.h"
+
+vector<int> v1;
+vector<double> v2;
+vector<string> v3;
+
+/* Definitions of the vector methods */
+```
+
+
 ## Template Quirks
 
 By this point, you should have a rudimentary understanding of templates. As you read about and use templates, there are a few quirks and peculiarities to keep in mind&mdash;this section discusses a few.
 
 ### `typename` vs. `class`
-
-### Declaration vs. Definition
 
 ### Default Parameters
 
