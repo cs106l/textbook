@@ -1,5 +1,4 @@
 import { SxProps, Theme } from "@mui/material";
-import LeaderLine from "leader-line-new";
 import { CompiledMDX } from "../mdx";
 
 export type MemoryDiagram = MemorySubDiagram[];
