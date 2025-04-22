@@ -296,7 +296,7 @@ int main() {
 ---
 std::pair<double, double> my_pair { 10, 20 };
 auto* ptr = &my_pair; `[]`
-double second = ptr->second; `[]`    // Same as (*ptr).first
+double second = ptr->second; `[]`    // Same as (*ptr).second
 ---
   return 0;
 }
