@@ -29,7 +29,7 @@
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.0",
     "katex": "^0.16.15",
-    "leader-line-new": "^1.1.9",
+    "leader-line": "^1.0.8",
     "lodash": "^4.17.21",
     "merge-sx": "^3.3.1",
     "next": "15.1.5",

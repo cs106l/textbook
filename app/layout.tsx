@@ -18,6 +18,7 @@ import Lightswitch from "@/components/lightswitch";
 
 import "./global.scss";
 import Search from "@/components/search";
+import Script from "next/script";
 
 const NavOffset = "6rem";
 
@@ -82,6 +83,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <html suppressHydrationWarning>
       <head />
       <body>
+        <Script
+          src="https://cdn.jsdelivr.net/npm/leader-line@1.0.8/leader-line.min.js"
+        />
         <InitColorSchemeScript attribute="class" />
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>
