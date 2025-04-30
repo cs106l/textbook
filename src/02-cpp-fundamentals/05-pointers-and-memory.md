@@ -569,7 +569,7 @@ double* ptr = &pi;
 ptr = &e;
 
 // However, we cannot do the same with references
-double& ref = &pi;
+double& ref = pi;
 ref = e;  // This line changed *pi*, not ref!
 ```
 
