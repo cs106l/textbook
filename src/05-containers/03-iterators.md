@@ -660,16 +660,17 @@ public:
 
 d = "deque<int>" { blocks: &blocks, capacity: 2 }
 blocks => "blocks" [ 0: &b0, 1: &b1 ]
-b0 ==> b"_456"
-b1 ==> b"789_"
+b0 ==> b"_456 "
+b1 ==> b"789_ "
 
 begin("d.begin()") = "_deque_iterator" {
   block: &blocks.0,
   current: &b0[1], 
   first: &b0[0],
-  last: &b0[3]
+  last: &b0[4]
 }
 
+#style striped b0[-1] b1[-1]
 #style:link { endSocket: left } begin.block
 #style:link { opacity: 0.5, dash: true } blocks.* d.*
 #style:link { dash: { animation: true } } begin.current
