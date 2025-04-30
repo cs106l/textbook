@@ -20,10 +20,9 @@ import { monospace } from "@/app/theme";
 import { MDXClient } from "../mdx/client";
 import dynamic from "next/dynamic";
 
-const PointerValueView = dynamic(
-  () => import("@/components/diagrams/pointer"),
-  { ssr: false }
-);
+const PointerLine = dynamic(() => import("@/components/diagrams/pointer"), {
+  ssr: false,
+});
 
 export default function MemoryDiagramView({ content }: PreContent) {
   const diagram = React.useMemo<MemoryDiagram>(
@@ -64,7 +63,10 @@ export default function MemoryDiagramView({ content }: PreContent) {
         className="memory-diagram"
         position="relative"
         overflow="auto"
-        sx={{ backgroundColor: "var(--palette-background-memory)" }}
+        sx={{
+          backgroundColor: "var(--palette-background-memory)",
+          overflowY: "hidden",
+        }}
         ref={diagramRef}
         display="flex"
         flexWrap="wrap"
@@ -295,6 +297,23 @@ function LiteralValueView({ value, path }: ValueProps<"literal">) {
     <Span data-ref={formatLocation(path)} {...value.style?.value}>
       {value.value}
     </Span>
+  );
+}
+
+function PointerValueView({ value, path }: ValueProps<"pointer">) {
+  const ref = React.useRef<HTMLElement | null>(null);
+  return (
+    <span
+      data-ref={formatLocation(path)}
+      data-connector={
+        typeof path[path.length - 1] === "number" ? "bottom" : "right"
+      }
+      ref={ref}
+      {...value.style?.value}
+    >
+      {value.value !== null ? "●" : "⦻"}
+      <PointerLine value={value} ref={ref} />
+    </span>
   );
 }
 

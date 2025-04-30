@@ -4,7 +4,7 @@ import React from "react";
 import { alpha, useTheme } from "@mui/material";
 import { useDiagram, ValueProps } from "./render";
 import { formatLocation } from "./compile";
-import { merge } from "lodash";
+import { debounce, merge } from "lodash";
 
 function getSocket(el: Element | null) {
   while (el) {
@@ -15,14 +15,21 @@ function getSocket(el: Element | null) {
   return undefined;
 }
 
-export default function PointerValueView({
-  value,
-  path,
-}: ValueProps<"pointer">) {
-  const src = React.useRef<HTMLElement | null>(null);
+export type PointerLineProps = {
+  value: ValueProps<"pointer">["value"];
+  ref: React.RefObject<HTMLElement | null>;
+};
 
+export default function PointerLine({ value, ref }: PointerLineProps) {
   const { arrowContainerRef, subdiagramRef } = useDiagram();
   const theme = useTheme();
+
+  /** When this value updates, we will re-render the arrow */
+  const [updateCounter, setUpdateCounter] = React.useState(0);
+  const updateArrows = React.useMemo(
+    () => debounce(() => setUpdateCounter((n) => n + 1), 250),
+    []
+  );
 
   const getLineColor = React.useCallback(() => {
     let rawColor = value.style?.link?.color ?? theme.palette.text.primary;
@@ -57,7 +64,7 @@ export default function PointerValueView({
     const dst = subdiagramRef.current.querySelector(
       `[data-ref="${formatLocation(value.value)}"]`
     );
-    if (!src.current || !dst) return;
+    if (!ref.current || !dst) return;
 
     const { opacity: _, color: __, ...lineOptions } = value.style?.link ?? {};
 
@@ -66,14 +73,14 @@ export default function PointerValueView({
         color: getLineColor(),
         size: 1,
         endPlugSize: 2,
-        startSocket: getSocket(src.current),
+        startSocket: getSocket(ref.current),
         endSocket: getSocket(dst),
         dash: value.style?.link?.dash ? { len: 8, gap: 4 } : undefined,
       },
       lineOptions
     );
 
-    const line = new LeaderLine(src.current, dst, options);
+    const line = new LeaderLine(ref.current, dst, options);
 
     // Code modified from: https://github.com/cognitive-engineering-lab/aquascope/blob/main/frontend/packages/aquascope-editor/src/editor-utils/interpreter.tsx#L606
     // Make arrows local to the diagram rather than global in the body
@@ -93,18 +100,19 @@ export default function PointerValueView({
       svgElements.forEach((el) => document.body.appendChild(el));
       line.remove();
     };
-  });
+  }, [value, theme, updateCounter]);
 
-  return (
-    <span
-      data-ref={formatLocation(path)}
-      data-connector={
-        typeof path[path.length - 1] === "number" ? "bottom" : "right"
-      }
-      ref={src}
-      {...value.style?.value}
-    >
-      {value.value !== null ? "●" : "⦻"}
-    </span>
-  );
+  /* Update arrows on window resize */
+  React.useEffect(() => {
+    window.addEventListener("resize", updateArrows);
+    return () => window.removeEventListener("resize", updateArrows);
+  }, [updateArrows]);
+
+  /* Update arrows on a timer (for robustness) */
+  React.useEffect(() => {
+    const interval = setInterval(updateArrows, 1000);
+    return () => clearInterval(interval);
+  }, [updateArrows]);
+
+  return null;
 }
