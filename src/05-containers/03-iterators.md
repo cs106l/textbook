@@ -531,13 +531,14 @@ std::deque<int> d { 4, 5, 6, 7, 8, 9 };
 ```memory
 diagram {
   #label title ""
-  d = "deque<int>" { start: &b0[1], finish: &b1[3], blocks: &blocks, capacity: 2 }
+  d = "deque<int>" { start: &b0[1], finish: &b1[4], blocks: &blocks, capacity: 2 }
   blocks => "blocks" [ 0: &b0, 1: &b1 ]
   b0 ==> b"_456"
-  b1 ==> b"789_"
+  b1 ==> b"789_ "
 
   #style:link { endSocket: top } d.start
   #style:link { opacity: 0.5, dash: true } d.start d.finish
+  #style striped b1[-1]
 }
 
 caption {
