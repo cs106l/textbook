@@ -1,4 +1,6 @@
 import {
+  Alert,
+  AlertProps,
   Divider,
   Link,
   Table,
@@ -28,6 +30,7 @@ import rehypeSlug from "rehype-slug";
 import remarkQuiz from "../quiz/remark";
 import Pre from "../pre";
 import remarkMemDiagram from "../diagrams/remark";
+import remarkGithubAlerts from "./remark-alerts";
 
 /* ========================================================================= */
 /* Styling and MDX Compilation                                               */
@@ -147,6 +150,19 @@ export const components: Readonly<MDXComponents> = {
     );
   },
 
+  alert: ({ className, children }) => {
+    function getProps(): AlertProps {
+      if (className === "tip") return { severity: "info" };
+      if (className === "note") return { severity: "info" };
+      if (className === "important") return { severity: "info" };
+      if (className === "warning") return { severity: "warning" };
+      if (className === "error") return { severity: "error" };
+      return { severity: "info" };
+    }
+
+    return <Alert {...getProps()}>{children}</Alert>;
+  },
+
   img: (props) => {
     const resolveSrc = (url?: string): string | undefined => {
       if (!url) return url;
@@ -191,6 +207,7 @@ export function getMDXOptions(options: RenderOptions): SerializeOptions {
         remarkMath,
         [remarkQuiz, options.path],
         remarkMemDiagram,
+        remarkGithubAlerts
       ],
       rehypePlugins: [
         rehypeKatex,

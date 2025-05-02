@@ -191,6 +191,21 @@ const theme = createTheme({
         size: "small",
       },
     },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          marginBottom: "1rem",
+        },
+        message: {
+          "& > *:last-child": {
+            marginBottom: 0
+          }
+        },
+        icon: {
+          alignItems: "center"
+        }
+      }
+    }
   },
 });
 
